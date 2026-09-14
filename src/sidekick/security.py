@@ -24,6 +24,44 @@ FORBIDDEN_COMMAND_PATTERNS = [
     r"\bwget\b.*\|\s*(sh|bash|pwsh|powershell)\b",
 ]
 
+SHELL_METACHAR_PATTERNS = [
+    r"&&",
+    r"\|\|",
+    r";",
+    r"\|",
+    r">>",
+    r">",
+    r"<<",
+    r"<",
+    r"`",
+    r"\$\(",
+    r"\)",
+    r"\n",
+    r"\r",
+]
+
+EXCLUDED_EXPLORATION_DIRS = {
+    ".git",
+    ".env",
+    "node_modules",
+    ".venv",
+    "venv",
+    "__pycache__",
+    ".pytest_cache",
+}
+
+EXCLUDED_FILE_PATTERNS = [
+    r"^\.env(\..*)?$",
+    r"^.*\.tfstate(\..*)?$",
+    r"^.*\.key$",
+    r"^.*\.pem$",
+    r"^.*\.pfx$",
+    r"^.*\.p12$",
+    r"^.*\.crt$",
+    r"^.*\.cer$",
+    r"^.*\.log$",
+]
+
 SECRET_KEYWORDS = [
     "password", "secret", "token", "api_key", "apikey", "private_key",
     "bearer", "ghp_", "gho_", "BEGIN RSA PRIVATE KEY", "BEGIN OPENSSH PRIVATE KEY"
@@ -45,7 +83,7 @@ class SecurityPolicy:
         # Never allow touching .git, .env, or DECISIONS.md
         if rel.startswith(".git") or rel == ".git":
             return False, "Modifying .git directory is forbidden."
-        if rel == ".env" or rel.startswith(".env."):
+        if rel == ".env" or rel.startswith(".env.") or "/.env" in rel:
             return False, "Accessing or modifying .env files is forbidden."
         if rel == ".ai/DECISIONS.md":
             return False, ".ai/DECISIONS.md is immutable and cannot be modified."
@@ -64,24 +102,71 @@ class SecurityPolicy:
 
         return True, "Allowed"
 
+    def is_path_excluded(self, rel_path: str) -> bool:
+        """Check if relative path matches excluded dirs or sensitive file patterns."""
+        norm = rel_path.replace("\\", "/").strip("/")
+        parts = norm.split("/")
+        for part in parts:
+            if part in EXCLUDED_EXPLORATION_DIRS:
+                return True
+        filename = parts[-1]
+        for pat in EXCLUDED_FILE_PATTERNS:
+            if re.match(pat, filename, re.IGNORECASE):
+                return True
+        for sec in ["id_rsa", "id_ecdsa", "id_ed25519", "credentials", "secret"]:
+            if sec in filename.lower():
+                return True
+        return False
+
+    def split_argv(self, cmd: str) -> List[str]:
+        """Split a command line safely into argv list."""
+        try:
+            return shlex.split(cmd, posix=False)
+        except Exception:
+            return shlex.split(cmd)
+
     def is_command_allowed(self, cmd: str) -> Tuple[bool, str]:
         cmd_stripped = cmd.strip()
         if not cmd_stripped:
             return False, "Empty command."
 
+        # Check for forbidden shell metacharacters & concatenation operators
+        for pattern in SHELL_METACHAR_PATTERNS:
+            if re.search(pattern, cmd_stripped):
+                return False, f"Command contains forbidden shell metacharacter/chaining operator: {pattern}"
+
+        # Check for destructive command patterns
         for pattern in FORBIDDEN_COMMAND_PATTERNS:
             if re.search(pattern, cmd_stripped, re.IGNORECASE):
                 return False, f"Command contains forbidden destructive pattern: {pattern}"
 
+        # Check argv-based allowlist
         if self.allowed_commands:
-            # Check if command matches or begins with allowed command base
+            try:
+                candidate_argv = self.split_argv(cmd_stripped)
+            except Exception as e:
+                return False, f"Failed to parse command arguments: {str(e)}"
+
             matched = False
             for allowed in self.allowed_commands:
-                if cmd_stripped == allowed or cmd_stripped.startswith(allowed + " "):
-                    matched = True
-                    break
+                try:
+                    allowed_argv = self.split_argv(allowed.strip())
+                except Exception:
+                    continue
+                if not allowed_argv:
+                    continue
+
+                # Candidate argv must start with allowed_argv
+                if len(candidate_argv) >= len(allowed_argv):
+                    # Compare case-insensitively for executable on Windows, exactly for rest
+                    exe_match = candidate_argv[0].lower() == allowed_argv[0].lower()
+                    rest_match = candidate_argv[1:len(allowed_argv)] == allowed_argv[1:]
+                    if exe_match and rest_match:
+                        matched = True
+                        break
+
             if not matched:
-                return False, f"Command '{cmd_stripped}' is not in Allowed Commands list: {self.allowed_commands}"
+                return False, f"Command argv {candidate_argv} is not permitted by Allowed Commands: {self.allowed_commands}"
 
         return True, "Allowed"
 

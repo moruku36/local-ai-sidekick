@@ -76,13 +76,28 @@ Ensure Ollama is running:
 ollama list
 ```
 
-Install recommended coding models (e.g., `qwen2.5-coder:7b` or `gpt-oss:20b`):
+Install the standard model (`qwen2.5:14b`):
 
 ```powershell
-ollama pull qwen2.5-coder:7b
+ollama pull qwen2.5:14b
 ```
 
-Any installed model can be specified through the environment variable `SIDEKICK_MODEL` or via the CLI flag `--model`.
+### GPU Offload Layer Limit (Video Playback & Desktop Safety)
+
+To prevent Ollama from 100% monopolizing VRAM (allowing concurrent video playback, window manager fluidness, or other GPU workloads), a `Modelfile` is provided:
+
+```dockerfile
+FROM qwen2.5:14b
+PARAMETER num_gpu 25
+```
+
+Apply this layer limit:
+
+```powershell
+ollama create qwen2.5:14b -f Modelfile
+```
+
+Any installed model can also be specified through the environment variable `SIDEKICK_MODEL` or via the CLI flag `--model`.
 
 ---
 

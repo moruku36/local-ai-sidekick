@@ -1,29 +1,30 @@
 # Current Task
 
 ## Goal
-Implement a string utility function to reverse text.
+Implement a mathematical utility function to compute factorial and verify directory exploration.
 
 ## Background
-Need a simple string reverser utility in `src/text_utils.py` and unit test in `tests/test_text_utils.py`.
+We need factorial computation in src/math_utils.py.
+Directory exploration should automatically discover src/ and tests/ directories.
 
 ## Allowed Files
-- src/text_utils.py
-- tests/test_text_utils.py
+- src/
+- tests/
 
 ## Forbidden Operations
-- Do not modify any other files
-- Do not make network calls
+- Do not modify files outside Allowed Files
+- Do not execute unlisted commands
 
 ## Requirements
-- Provide `reverse_string(text: str) -> str` in `src/text_utils.py`.
-- Provide unit tests for `reverse_string` in `tests/test_text_utils.py`.
+- Add `factorial(n: int) -> int` in `src/math_utils.py`.
+- Handle n = 0 returning 1. Raise ValueError on negative n.
+- Add unit tests in `tests/test_math_utils.py`.
 
 ## Acceptance Criteria
-- `python -m unittest discover tests` runs and exits with 0.
+- `python -m unittest discover tests` succeeds with 0 exit code.
 
 ## Allowed Commands
 - python -m unittest discover tests
 
 ## Review Points
-- Function docstring and type annotations
-- Boundary cases (empty string, unicode) tested
+- Recursion or loop safety and input validation

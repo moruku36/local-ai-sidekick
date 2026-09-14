@@ -1,4 +1,6 @@
 import unittest
+import tempfile
+import shutil
 from pathlib import Path
 from sidekick.task_parser import TaskDefinition
 from sidekick.security import SecurityPolicy
@@ -49,16 +51,20 @@ class TestSecurityPolicy(unittest.TestCase):
         self.root = Path(__file__).parent.parent
         self.policy = SecurityPolicy(
             repo_root=self.root,
-            allowed_files=["src/calc.py", "tests/test_calc.py"],
-            allowed_commands=["pytest", "python -m unittest"]
+            allowed_files=["src/calc.py", "tests/test_calc.py", "src/"],
+            allowed_commands=["python -m unittest", "terraform validate", "pytest"]
         )
 
     def test_file_allowlist(self):
         allowed, _ = self.policy.is_path_allowed("src/calc.py")
         self.assertTrue(allowed)
 
+        # Directory prefix matching
+        allowed_sub, _ = self.policy.is_path_allowed("src/sub/helper.py")
+        self.assertTrue(allowed_sub)
+
         # Disallowed file
-        disallowed, reason = self.policy.is_path_allowed("src/other.py")
+        disallowed, reason = self.policy.is_path_allowed("docs/readme.md")
         self.assertFalse(disallowed)
 
         # Git and env are blocked
@@ -76,23 +82,50 @@ class TestSecurityPolicy(unittest.TestCase):
         res, _ = self.policy.is_path_allowed(".ai/RESULT.md")
         self.assertTrue(res)
 
-    def test_command_allowlist_and_forbidden(self):
-        allowed, _ = self.policy.is_command_allowed("pytest")
-        self.assertTrue(allowed)
+    def test_command_allowlist_positive(self):
+        # Allowed exact and arguments
+        self.assertTrue(self.policy.is_command_allowed("python -m unittest")[0])
+        self.assertTrue(self.policy.is_command_allowed("python -m unittest discover tests")[0])
+        self.assertTrue(self.policy.is_command_allowed("terraform validate")[0])
 
-        # Disallowed command
-        disallowed, _ = self.policy.is_command_allowed("git commit -m 'test'")
-        self.assertFalse(disallowed)
+    def test_command_allowlist_blocked_shell_metacharacters(self):
+        blocked_cases = [
+            "python -m unittest && whoami",
+            "python -m unittest ; whoami",
+            "python -m unittest | more",
+            "python -m unittest > result.txt",
+            "python -m unittest >> result.txt",
+            "python -m unittest < input.txt",
+            "terraform validate && terraform apply",
+            "python -m unittest $(whoami)",
+            "python -m unittest `whoami`",
+            "python -m unittest || exit 1"
+        ]
+        for cmd in blocked_cases:
+            allowed, reason = self.policy.is_command_allowed(cmd)
+            self.assertFalse(allowed, f"Expected '{cmd}' to be blocked, but was allowed.")
 
-        # Forbidden destructive patterns
-        rm_cmd, _ = self.policy.is_command_allowed("rm -rf src")
-        self.assertFalse(rm_cmd)
+    def test_command_allowlist_unauthorized_and_destructive(self):
+        self.assertFalse(self.policy.is_command_allowed("rm -rf src")[0])
+        self.assertFalse(self.policy.is_command_allowed("terraform apply")[0])
+        self.assertFalse(self.policy.is_command_allowed("gcloud compute instances delete foo")[0])
+        self.assertFalse(self.policy.is_command_allowed("git commit -m 'test'")[0])
 
-        tf_cmd, _ = self.policy.is_command_allowed("terraform apply")
-        self.assertFalse(tf_cmd)
+    def test_excluded_paths(self):
+        self.assertTrue(self.policy.is_path_excluded(".git/HEAD"))
+        self.assertTrue(self.policy.is_path_excluded(".env"))
+        self.assertTrue(self.policy.is_path_excluded(".env.production"))
+        self.assertTrue(self.policy.is_path_excluded("node_modules/pkg/index.js"))
+        self.assertTrue(self.policy.is_path_excluded(".venv/bin/python"))
+        self.assertTrue(self.policy.is_path_excluded("src/__pycache__/app.cpython-311.pyc"))
+        self.assertTrue(self.policy.is_path_excluded("terraform.tfstate"))
+        self.assertTrue(self.policy.is_path_excluded("secrets/server.key"))
+        self.assertTrue(self.policy.is_path_excluded("certs/app.pem"))
+        self.assertTrue(self.policy.is_path_excluded("logs/app.log"))
 
-        gcloud_cmd, _ = self.policy.is_command_allowed("gcloud compute instances delete foo")
-        self.assertFalse(gcloud_cmd)
+        # Valid source files should not be excluded
+        self.assertFalse(self.policy.is_path_excluded("src/app.py"))
+        self.assertFalse(self.policy.is_path_excluded("tests/test_calc.py"))
 
     def test_sanitize_output(self):
         raw = "Error with token gho_123456789012345678901234 and password: mysecretpassword123"

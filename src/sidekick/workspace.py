@@ -33,9 +33,10 @@ class WorkspaceManager:
             return 126, "", f"Command blocked by security policy: {reason}"
 
         try:
+            argv = self.security_policy.split_argv(command)
             res = subprocess.run(
-                command,
-                shell=True,
+                argv,
+                shell=False,
                 cwd=str(self.repo_root),
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -47,6 +48,8 @@ class WorkspaceManager:
             return res.returncode, stdout, stderr
         except subprocess.TimeoutExpired:
             return 124, "", f"Command timed out after {timeout_seconds} seconds"
+        except FileNotFoundError as e:
+            return 127, "", f"Executable not found: {str(e)}"
         except Exception as e:
             return 1, "", f"Execution error: {str(e)}"
 
@@ -54,6 +57,7 @@ class WorkspaceManager:
         try:
             res = subprocess.run(
                 ["git", "diff", "--stat"],
+                shell=False,
                 cwd=str(self.repo_root),
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -64,6 +68,7 @@ class WorkspaceManager:
             if not diff_stat:
                 res_untracked = subprocess.run(
                     ["git", "status", "--short"],
+                    shell=False,
                     cwd=str(self.repo_root),
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,

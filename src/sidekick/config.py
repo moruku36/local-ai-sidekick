@@ -9,6 +9,9 @@ class SidekickConfig:
     model: str
     max_retries: int
     timeout_seconds: int
+    max_files: int
+    max_file_bytes: int
+    max_context_bytes: int
     rules_path: str
     task_path: str
     result_path: str
@@ -31,9 +34,12 @@ class SidekickConfig:
 
         return cls(
             ollama_base_url=get_val("SIDEKICK_OLLAMA_BASE_URL", "http://localhost:11434"),
-            model=get_val("SIDEKICK_MODEL", "qwen2.5-coder:7b"),
+            model=get_val("SIDEKICK_MODEL", "qwen2.5:14b"),
             max_retries=int(get_val("SIDEKICK_MAX_RETRIES", "2")),
             timeout_seconds=int(get_val("SIDEKICK_TIMEOUT_SECONDS", "180")),
+            max_files=int(get_val("SIDEKICK_MAX_FILES", "40")),
+            max_file_bytes=int(get_val("SIDEKICK_MAX_FILE_BYTES", "50000")),
+            max_context_bytes=int(get_val("SIDEKICK_MAX_CONTEXT_BYTES", "300000")),
             rules_path=get_val("SIDEKICK_RULES_PATH", ".ai/RULES.md"),
             task_path=get_val("SIDEKICK_TASK_PATH", ".ai/TASK.md"),
             result_path=get_val("SIDEKICK_RESULT_PATH", ".ai/RESULT.md"),
