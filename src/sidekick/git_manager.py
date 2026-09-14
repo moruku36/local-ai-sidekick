@@ -55,10 +55,27 @@ class GitAutomationManager:
 
         # 5. Check dirty working directory
         if require_clean:
-            code, out, _ = self._run_git(["status", "--porcelain"])
+            code, out, _ = self._run_git(["status", "--porcelain", "-uall"])
             if code == 0 and out.strip():
-                # Report dirty files
-                return False, f"Working tree is dirty. Stash or commit existing changes before starting Phase 2:\n{out[:300]}"
+                # Allow TASK.md, RESULT.md, and state/lock files as normal task input/state
+                allowed_preflight_dirty = {
+                    ".ai/TASK.md", ".ai/RESULT.md", ".ai/task.md", ".ai/result.md",
+                    ".ai/state.json", ".ai/sidekick.lock"
+                }
+                dirty_violations = []
+                for line in out.splitlines():
+                    line = line.strip()
+                    if not line:
+                        continue
+                    p = line[2:].strip()
+                    if " -> " in p:
+                        p = p.split(" -> ")[1].strip()
+                    norm_p = p.replace("\\", "/").rstrip("/")
+                    if norm_p not in allowed_preflight_dirty and not norm_p.endswith((".pyc", ".pyo")) and "__pycache__" not in norm_p:
+                        dirty_violations.append(p)
+
+                if dirty_violations:
+                    return False, f"Working tree is dirty. Stash or commit existing changes before starting Phase 2:\n" + "\n".join(dirty_violations[:10])
 
         return True, "Preflight check passed."
 

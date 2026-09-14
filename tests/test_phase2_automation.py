@@ -106,6 +106,13 @@ class TestGitAutomation(unittest.TestCase):
         ok, msg = self.git_mgr.preflight_check(require_clean=True)
         self.assertTrue(ok, msg)
 
+    def test_preflight_allows_task_and_result_files(self):
+        (self.test_dir / ".ai").mkdir(exist_ok=True)
+        (self.test_dir / ".ai" / "TASK.md").write_text("# Current Task\n", encoding="utf-8")
+        (self.test_dir / ".ai" / "RESULT.md").write_text("# Result\n", encoding="utf-8")
+        ok, msg = self.git_mgr.preflight_check(require_clean=True)
+        self.assertTrue(ok, f"Preflight should permit TASK.md/RESULT.md but got: {msg}")
+
     def test_preflight_dirty_blocked(self):
         (self.test_dir / "uncommitted.txt").write_text("dirty", encoding="utf-8")
         ok, msg = self.git_mgr.preflight_check(require_clean=True)

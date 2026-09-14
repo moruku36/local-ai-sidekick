@@ -2,6 +2,7 @@
 import json
 import re
 import sys
+import time
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
 
@@ -203,6 +204,35 @@ class SidekickRunner:
                 print(f"  -> {b_msg}")
         else:
             result_data["branch"] = self.git_manager.get_current_branch() or "local"
+
+        # Check for Resume: if previous run already succeeded / committed on this task
+        if self.state_file.exists() and self.config.auto_git:
+            prev_state = SidekickState.load(self.state_file)
+            if prev_state.task_id == task.task_id and prev_state.status == "SUCCESS":
+                if prev_state.commit_hash:
+                    result_data["commit_hash"] = prev_state.commit_hash
+                    result_data["status"] = "SUCCESS"
+                    print(f"  [Resume] Detected previously successful commit {prev_state.commit_hash} for task {task.task_id}.")
+                    if self.config.auto_push:
+                        print(f"  [Resume] Resuming push of branch {result_data['branch']} to origin...")
+                        p_ok, p_msg = self.git_manager.safe_push(result_data["branch"])
+                        if not p_ok:
+                            result_data["push_status"] = "PUSH_FAILED"
+                            result_data["automation_status"] = "PUSH_FAILED"
+                            result_data["errors"] = p_msg
+                            prev_state.push_status = "PUSH_FAILED"
+                            prev_state.automation_status = "PUSH_FAILED"
+                            prev_state.save(self.state_file)
+                            self._write_result(result_data)
+                            return result_data
+                        result_data["push_status"] = "SUCCESS"
+                        result_data["automation_status"] = "READY_FOR_REVIEW"
+                        prev_state.push_status = "SUCCESS"
+                        prev_state.automation_status = "READY_FOR_REVIEW"
+                        prev_state.save(self.state_file)
+                        self._write_result(result_data)
+                        print(f"  [Resume] Successfully resumed and pushed branch {result_data['branch']}! READY_FOR_REVIEW.")
+                        return result_data
 
         # Step 5: Load DECISIONS.md
         print("[5/12] Loading DECISIONS.md...")
@@ -436,12 +466,19 @@ If you cannot safely proceed without violating rules or if design is ambiguous, 
             # 12.3 Safe Commit
             if self.config.auto_commit:
                 print(f"  -> Creating commit for task {task.task_id}...")
+                result_data["automation_status"] = "READY_FOR_REVIEW"
+                result_data["push_status"] = "PENDING" if self.config.auto_push else "NONE"
+                self._write_result(result_data)
+
                 commit_files = [
                     f for f in actual_changed
                     if f.replace("\\", "/") not in [".ai/state.json", ".ai/sidekick.lock"]
                     and "__pycache__" not in f
                     and not f.endswith((".pyc", ".pyo"))
                 ]
+                if self.config.commit_result_file and self.config.result_path not in commit_files:
+                    commit_files.append(self.config.result_path)
+
                 c_ok, c_hash, c_msg = self.git_manager.commit_changes(
                     task.task_id, commit_files, message_suffix=result_data["summary"]
                 )
@@ -449,10 +486,14 @@ If you cannot safely proceed without violating rules or if design is ambiguous, 
                     result_data["status"] = "FAILED"
                     result_data["errors"] = c_msg
                     result_data["automation_status"] = "FAILED"
+                    self._save_state(task.task_id, result_data)
                     self._write_result(result_data)
                     return result_data
                 result_data["commit_hash"] = c_hash
                 print(f"  -> Committed commit {c_hash}: {c_msg}")
+
+                # Save committed state immediately so resumption works even if push fails or crashes
+                self._save_state(task.task_id, result_data)
 
             # 12.4 Safe Push
             if self.config.auto_push:
@@ -462,6 +503,7 @@ If you cannot safely proceed without violating rules or if design is ambiguous, 
                     result_data["push_status"] = "PUSH_FAILED"
                     result_data["automation_status"] = "PUSH_FAILED"
                     result_data["errors"] = p_msg
+                    self._save_state(task.task_id, result_data)
                     self._write_result(result_data)
                     return result_data
                 result_data["push_status"] = "SUCCESS"
@@ -469,15 +511,7 @@ If you cannot safely proceed without violating rules or if design is ambiguous, 
                 print("  -> Successfully pushed task branch!")
 
             # Update final state
-            state = SidekickState(
-                task_id=task.task_id,
-                branch=result_data["branch"],
-                status=result_data["status"],
-                commit_hash=result_data["commit_hash"],
-                push_status=result_data["push_status"],
-                automation_status=result_data["automation_status"],
-            )
-            state.save(self.state_file)
+            self._save_state(task.task_id, result_data)
             self._write_result(result_data)
 
             print(f"\n=======================================================")
@@ -593,3 +627,16 @@ If you cannot safely proceed without violating rules or if design is ambiguous, 
 """
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding="utf-8")
+
+    def _save_state(self, task_id: str, res: Dict[str, Any]) -> None:
+        state = SidekickState(
+            task_id=task_id,
+            branch=res.get("branch", ""),
+            status=res.get("status", "IDLE"),
+            commit_hash=res.get("commit_hash", ""),
+            push_status=res.get("push_status", ""),
+            automation_status=res.get("automation_status", "IDLE"),
+            updated_at=time.strftime("%Y-%m-%d %H:%M:%S")
+        )
+        state.save(self.state_file)
+

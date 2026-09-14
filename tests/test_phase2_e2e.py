@@ -90,7 +90,7 @@ We need to capitalize strings in src/cap.py.
         config.auto_branch = True
         config.auto_commit = True
         config.auto_push = True
-        config.require_clean_git = False # Allow the freshly written TASK.md
+        config.require_clean_git = True # Validates that TASK.md does not block require_clean_git
 
         watcher = TaskWatcher(repo_root=self.project_dir, config=config)
 
@@ -108,6 +108,13 @@ We need to capitalize strings in src/cap.py.
             ["git", "branch", "--list"], cwd=self.remote_dir, capture_output=True, text=True
         ).stdout
         self.assertIn("ai/e2e-task-001", remote_branches)
+
+        # Verify committed RESULT.md contains READY_FOR_REVIEW and branch
+        show_result = subprocess.run(
+            ["git", "show", "HEAD:.ai/RESULT.md"], cwd=self.project_dir, capture_output=True, text=True
+        ).stdout
+        self.assertIn("READY_FOR_REVIEW", show_result)
+        self.assertIn("ai/e2e-task-001", show_result)
 
         # Verify state.json
         state = SidekickState.load(self.project_dir / ".ai" / "state.json")
