@@ -215,6 +215,69 @@ Lead AI inspects `.ai/RESULT.md`, verifies the diff, and accepts or iterates.
 
 ---
 
+## Auto-Delegation Layer (Astra / Antigravity Integration)
+
+Local AI Sidekick includes an automated delegation routing layer to seamlessly divide work between Frontier models (Lead AI) and Local Ollama (Worker):
+
+```text
+User
+ │
+ ▼
+Astra / Antigravity (Lead AI)
+ │
+ ▼
+Delegation Decision (Policy & Router)
+ ├── LEAD    ──> Astra handles directly (Architecture, Security, Cloud Write, PR merge)
+ ├── LOCAL   ──> Writes .ai/TASK.md (Bug fixes, tests, refactoring, docs)
+ └── BLOCKED ──> Awaiting clarification or user approval (Ambiguous or unsafe scope)
+                      │
+                      ▼
+                 Task Watcher (.ai/TASK.md SHA-256 hash trigger)
+                      │
+                      ▼
+             Local Sidekick (Ollama qwen2.5:14b)
+                      │
+                      ▼
+             Tests & Self-Fix Loop
+                      │
+                      ▼
+             Diff Guard & Secret Scan
+                      │
+                      ▼
+             ai/<task-id> branch commit & push
+                      │
+                      ▼
+             READY_FOR_REVIEW
+                      │
+                      ▼
+             Astra / Antigravity Final Code Review
+```
+
+### Delegation CLI
+
+Evaluate any task request using the built-in delegation engine:
+
+```bash
+# Evaluate routing decision
+python -m sidekick.cli --delegate "fix failing test in test_math.py" --allowed-files tests/test_math.py
+
+# Output:
+# decision: LOCAL
+# reason: "Task involves implementation, exploration, test, or maintenance with bounded scope suitable for Local Sidekick."
+# confidence: 0.92
+# task_type: fix
+# risk: low
+# requires_human_approval: false
+
+# Generate .ai/TASK.md automatically
+python -m sidekick.cli --generate-task "fix failing test in test_math.py" --allowed-files tests/test_math.py
+```
+
+### Disabling Delegation
+To bypass local delegation and force Lead AI execution, set `SIDEKICK_AUTO_GIT=false` or remove the target task from `.ai/TASK.md`.
+
+---
+
 ## Phase 2 Watcher Mode (Autonomous Background Worker)
 
 Run the Task Watcher to monitor `.ai/TASK.md` continuously:
@@ -226,6 +289,7 @@ Run the Task Watcher to monitor `.ai/TASK.md` continuously:
 - Calculates SHA256 hashes of `.ai/TASK.md` to prevent redundant runs.
 - Manages concurrency via `.ai/sidekick.lock` with automatic stale-lock recovery (600s timeout).
 - Logs execution state in `.ai/state.json`.
+
 
 ---
 

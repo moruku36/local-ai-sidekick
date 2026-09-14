@@ -66,6 +66,7 @@ local-ai-sidekick/
 │       ├── git_manager.py # Safe Git branching, diff guard, commit & push
 │       ├── state_manager.py # State tracking (.ai/state.json) & lock manager
 │       ├── watcher.py     # Background task watcher
+│       ├── delegation.py  # Delegation policy router & task generator
 │       ├── task_parser.py # TASK.md Markdown parser
 │       └── workspace.py   # Safe file I/O and process execution
 ├── docs/
@@ -74,6 +75,7 @@ local-ai-sidekick/
 │   ├── test_sidekick_core.py # Phase 1 unit tests
 │   ├── test_phase2_automation.py # Phase 2 git & diff guard unit tests
 │   ├── test_phase2_e2e.py    # Phase 2 E2E integration test
+│   ├── test_delegation.py    # Delegation router and task generation tests
 │   └── fixtures/          # Verifiable fixture projects
 └── README.md
 ```
@@ -96,6 +98,32 @@ local-ai-sidekick/
 8. **Safe Commit & Push**: Commits changes and pushes only `origin ai/<task-id>`.
 9. **Ready For Review**: Updates `.ai/state.json` and `.ai/RESULT.md` to `READY_FOR_REVIEW`.
 10. **Lead AI Review**: Lead AI reviews the remote branch and `RESULT.md`.
+
+### Phase 2.5 Auto-Delegation Layer (Astra / Antigravity Integration)
+```text
+User Request
+    │
+    ▼
+Lead AI (Astra / Antigravity)
+    │
+    ├─► Evaluates via DelegationRouter:
+    │     - LOCAL: Bounded implementation, bug fixes, refactor, tests, docs
+    │     - LEAD: Architecture, IAM, production deploy, security design
+    │     - BLOCKED: Unbounded files, ambiguity, destructive commands
+    │
+    ▼ (When LOCAL)
+Generates .ai/TASK.md with unique timestamp ID
+    │
+    ▼
+Watcher triggers Local Sidekick execution (Ollama)
+    │
+    ▼
+Local Sidekick verifies, self-fixes, commits & pushes to ai/<task-id>
+    │
+    ▼
+Lead AI receives READY_FOR_REVIEW notification and conducts final review
+```
+
 
 ## 4. Security & Safety Model
 
