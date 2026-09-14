@@ -229,7 +229,11 @@ Run the Task Watcher to monitor `.ai/TASK.md` continuously:
 
 ---
 
-## Security Model
+## Security Model & Operational Notice
+
+> [!WARNING]
+> **Local Execution & Untrusted Tasks Warning**:
+> This tool executes code, builds, and test commands locally on your machine via subprocesses. While dangerous commands (`rm -rf`, destructive cloud writes, git hard resets) and undeclared file edits are guarded, command execution still interacts directly with your host environment. **Do not run untrusted or unreviewed tasks from unknown sources.**
 
 - **Permanent Rules**: Stored in `.ai/RULES.md`.
 - **Allowed Files List & Diff Guard**: Path traversal and access to undeclared files are blocked at execution and before Git commit.
@@ -237,6 +241,13 @@ Run the Task Watcher to monitor `.ai/TASK.md` continuously:
 - **Destructive Command Blocking**: Commands matching `rm -rf`, `git reset --hard`, `terraform apply`, `aws/az/gcloud` write operations are intercepted and denied.
 - **Secret Redaction & Pre-commit Scanning**: Detects and masks credentials in outputs; blocks commits containing raw secrets.
 - **Git Protection**: Local LLM never executes raw git commands; all git operations are performed by hardened Python manager. Push to `main` is blocked.
+- **Task Data Isolation Recommendation**: This repository provides the sidekick framework. For actual proprietary projects, configure the sidekick in your target project repository rather than committing sensitive operational `TASK.md`/`RESULT.md` into public templates.
+
+---
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
 
 ---
 
