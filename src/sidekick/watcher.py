@@ -1,5 +1,7 @@
 """File watcher for .ai/TASK.md in Phase 2."""
 import hashlib
+import json
+import re
 import time
 from pathlib import Path
 from typing import Optional
@@ -26,30 +28,50 @@ class TaskWatcher:
 
     def run_once(self) -> Optional[dict]:
         """Checks if TASK.md has a new unhandled task and executes Phase 2 runner if ready."""
+        # Read task and state only after acquiring the same lock as the producer.
+        if not self.lock_manager.acquire():
+            return None
+        try:
+            return self._run_locked()
+        finally:
+            self.lock_manager.release()
+
+    def _run_locked(self) -> Optional[dict]:
         if not self.task_file.exists():
             return None
 
         current_hash = self._compute_hash()
-        state = SidekickState.load(self.state_file)
+        try:
+            state = (SidekickState(**json.loads(self.state_file.read_text(encoding="utf-8")))
+                     if self.state_file.exists() else SidekickState())
+            if not isinstance(state.processed_tasks, dict):
+                return None
+        except (ValueError, TypeError, OSError):
+            return None  # Corrupt state needs Lead review, never replay tasks.
 
         try:
             task = TaskDefinition.parse_file(self.task_file)
         except Exception:
             return None
 
-        if not task.goal.strip():
+        if not re.sub(r"<!--.*?-->", "", task.goal, flags=re.DOTALL).strip():
             return None
 
         # Check if already processed
-        if state.task_id == task.task_id and state.task_hash == current_hash and state.automation_status in ["READY_FOR_REVIEW", "SUCCESS"]:
-            return None
-
-        # Attempt to acquire lock
-        if not self.lock_manager.acquire():
-            print(f"[Watcher] Another sidekick process is active (lock file exists at {self.lock_file}).")
+        if (task.task_id in state.processed_tasks or current_hash in state.processed_tasks.values() or
+                (state.task_id == task.task_id and state.automation_status not in ["", "IDLE"])):
             return None
 
         try:
+            # Persist before execution. A crash must require review, not rerun.
+            if state.task_id and state.automation_status not in ["", "IDLE"]:
+                state.processed_tasks.setdefault(state.task_id, state.task_hash)
+            state.processed_tasks[task.task_id] = current_hash
+            state.task_id = task.task_id
+            state.task_hash = current_hash
+            state.status = "RUNNING"
+            state.automation_status = "RUNNING"
+            state.save(self.state_file)
             print(f"\n[Watcher] Detected new or updated task '{task.task_id}'! Triggering Sidekick Phase 2...")
             # Set auto_git true for Phase 2 watcher
             self.config.auto_git = True
@@ -63,12 +85,15 @@ class TaskWatcher:
             state.branch = result.get("branch", "")
             state.commit_hash = result.get("commit_hash", "")
             state.push_status = result.get("push_status", "")
-            state.automation_status = result.get("automation_status", "")
+            state.automation_status = result.get("automation_status") or state.status
             state.updated_at = time.strftime("%Y-%m-%d %H:%M:%S")
             state.save(self.state_file)
             return result
-        finally:
-            self.lock_manager.release()
+        except Exception:
+            state.status = "BLOCKED"
+            state.automation_status = "BLOCKED"
+            state.save(self.state_file)
+            raise
 
     def start_loop(self) -> None:
         """Runs the continuous watching loop."""

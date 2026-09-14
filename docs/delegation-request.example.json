@@ -1,0 +1,18 @@
+{
+  "decision": "LOCAL",
+  "reason": "A bounded README clarification with explicit acceptance criteria.",
+  "confidence": 0.95,
+  "task_type": "documentation",
+  "risk": "low",
+  "ambiguous": false,
+  "requires_human_approval": false,
+  "task": {
+    "goal": "Clarify the README purpose paragraph without changing behavior.",
+    "background": "Readers need the Lead and Worker responsibilities stated clearly.",
+    "allowed_files": ["README.md"],
+    "requirements": ["State that Lead owns design and review and Worker owns bounded implementation."],
+    "acceptance_criteria": ["README contains both responsibilities and git diff --check passes."],
+    "allowed_commands": ["git diff --check"],
+    "review_points": ["Check wording against the existing architecture and security model."]
+  }
+}
