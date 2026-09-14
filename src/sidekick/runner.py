@@ -222,7 +222,7 @@ If you cannot safely proceed without violating rules or if design is ambiguous, 
                 result_data["errors"] = f"Command failed: {cmd}\n{stderr or stdout}"
                 break
 
-        result_data["commands_Executed"] = commands_run
+        result_data["commands_executed"] = commands_run
         result_data["test_results"] = "\n\n".join(test_output_summary) if test_output_summary else "No verification command was executed."
 
         # Self-fix loop if failed
