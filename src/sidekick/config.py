@@ -17,6 +17,16 @@ class SidekickConfig:
     result_path: str
     decisions_path: str
     system_prompt_path: str
+    # Phase 2 configurations
+    auto_git: bool
+    auto_branch: bool
+    auto_commit: bool
+    auto_push: bool
+    create_pr: bool
+    watch_interval: int
+    require_clean_git: bool
+    commit_task_file: bool
+    commit_result_file: bool
 
     @classmethod
     def load(cls, repo_root: Path, env_file: Path | None = None) -> "SidekickConfig":
@@ -32,6 +42,10 @@ class SidekickConfig:
         def get_val(key: str, default: str) -> str:
             return os.environ.get(key, env_vars.get(key, default))
 
+        def get_bool(key: str, default: bool) -> bool:
+            v = get_val(key, str(default)).lower()
+            return v in ["true", "1", "yes"]
+
         return cls(
             ollama_base_url=get_val("SIDEKICK_OLLAMA_BASE_URL", "http://localhost:11434"),
             model=get_val("SIDEKICK_MODEL", "qwen2.5:14b"),
@@ -45,4 +59,14 @@ class SidekickConfig:
             result_path=get_val("SIDEKICK_RESULT_PATH", ".ai/RESULT.md"),
             decisions_path=get_val("SIDEKICK_DECISIONS_PATH", ".ai/DECISIONS.md"),
             system_prompt_path=get_val("SIDEKICK_SYSTEM_PROMPT_PATH", "prompts/sidekick-system.md"),
+            # Phase 2
+            auto_git=get_bool("SIDEKICK_AUTO_GIT", False),
+            auto_branch=get_bool("SIDEKICK_AUTO_BRANCH", True),
+            auto_commit=get_bool("SIDEKICK_AUTO_COMMIT", True),
+            auto_push=get_bool("SIDEKICK_AUTO_PUSH", True),
+            create_pr=get_bool("SIDEKICK_CREATE_PR", False),
+            watch_interval=int(get_val("SIDEKICK_WATCH_INTERVAL", "3")),
+            require_clean_git=get_bool("SIDEKICK_REQUIRE_CLEAN_GIT", True),
+            commit_task_file=get_bool("SIDEKICK_COMMIT_TASK_FILE", True),
+            commit_result_file=get_bool("SIDEKICK_COMMIT_RESULT_FILE", True),
         )

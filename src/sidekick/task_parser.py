@@ -1,4 +1,5 @@
 """Task file parser and data structures."""
+import datetime
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -6,6 +7,7 @@ from typing import List
 
 @dataclass
 class TaskDefinition:
+    task_id: str = ""
     goal: str = ""
     background: str = ""
     allowed_files: List[str] = field(default_factory=list)
@@ -41,6 +43,18 @@ class TaskDefinition:
                     items.append(clean)
             return items
 
+        raw_task_id = extract_section("Task ID")
+        # Remove any comments or bullets from task_id
+        task_id = ""
+        for line in raw_task_id.splitlines():
+            clean = re.sub(r"^[-*]\s+", "", line).strip()
+            if clean and not clean.startswith("<!--") and not clean.endswith("-->"):
+                task_id = clean
+                break
+
+        if not task_id:
+            task_id = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+
         goal = extract_section("Goal")
         background = extract_section("Background")
         allowed_files = extract_items(extract_section("Allowed Files"))
@@ -51,6 +65,7 @@ class TaskDefinition:
         review_points = extract_items(extract_section("Review Points"))
 
         return cls(
+            task_id=task_id,
             goal=goal,
             background=background,
             allowed_files=allowed_files,

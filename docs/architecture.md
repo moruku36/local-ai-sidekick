@@ -60,44 +60,51 @@ local-ai-sidekick/
 │       ├── ollama_client.py # Ollama API client (health, list, chat)
 │       ├── runner.py      # 12-step execution orchestrator
 │       ├── security.py    # Command & path allowlist, output redactor
+│       ├── secret_scanner.py # Pre-commit secret scanning engine
+│       ├── git_manager.py # Safe Git branching, diff guard, commit & push
+│       ├── state_manager.py # State tracking (.ai/state.json) & lock manager
+│       ├── watcher.py     # Background task watcher
 │       ├── task_parser.py # TASK.md Markdown parser
 │       └── workspace.py   # Safe file I/O and process execution
 ├── docs/
 │   └── architecture.md    # This document
 ├── tests/
-│   ├── test_sidekick_core.py # Unit tests for parser and security
+│   ├── test_sidekick_core.py # Phase 1 unit tests
+│   ├── test_phase2_automation.py # Phase 2 git & diff guard unit tests
+│   ├── test_phase2_e2e.py    # Phase 2 E2E integration test
 │   └── fixtures/          # Verifiable fixture projects
 └── README.md
 ```
 
 ## 3. Workflow Protocol
 
-1. **Lead AI specifies task**: Lead AI writes `.ai/TASK.md` detailing `Goal`, `Allowed Files`, `Forbidden Operations`, `Requirements`, `Acceptance Criteria`, `Allowed Commands`, and `Review Points`.
-2. **Sidekick Invocation**: The developer or automated runner executes `.\scripts\run-sidekick.ps1`.
-3. **Execution Pipeline (12 Steps)**:
-   - Check Ollama daemon health (`/api/tags`).
-   - Verify presence of selected model.
-   - Load `.ai/RULES.md`.
-   - Parse `.ai/TASK.md`.
-   - Read `.ai/DECISIONS.md`.
-   - Inspect existing files listed under `Allowed Files`.
-   - Construct prompt including system prompt and repository context.
-   - Invoke Local LLM via Ollama OpenAI-compatible chat API (`/v1/chat/completions`).
-   - Execute verification commands from `Allowed Commands`; trigger self-fix loop if verification fails.
-   - Render `.ai/RESULT.md`.
-   - Compute `git diff --stat` or status summary.
-   - Terminate with exit code (0: Success, 1: Failure, 2: Blocked) for human/Lead AI review.
-4. **Lead AI Review**: Lead AI inspects `.ai/RESULT.md` and repository diff, accepts or issues a follow-up task.
+### Phase 1 Manual Mode
+1. **Lead AI specifies task**: Writes `.ai/TASK.md`.
+2. **Developer runs**: `.\scripts\run-sidekick.ps1`.
+3. **Execution Pipeline**: Ollama check -> Task parse -> Local LLM -> Verification -> Self-fix -> RESULT.md -> Exit.
+
+### Phase 2 Autonomous Git Mode
+1. **Lead AI writes `.ai/TASK.md`** with `Task ID`.
+2. **Watcher or Runner triggered**: `.\scripts\watch-sidekick.ps1` or `.\scripts\run-sidekick-phase2.ps1`.
+3. **Git Preflight Check**: Confirms clean git working tree and remote configuration.
+4. **Task Branch Creation**: Switches to or creates `ai/<task-id>`. Direct push to `main` is strictly forbidden.
+5. **Implementation & Verification**: Local LLM edits allowed files, runs verification commands, and self-fixes if tests fail.
+6. **Diff Guard**: Strictly validates modified files against `Allowed Files` before staging.
+7. **Secret Scan**: Scans all modified files for tokens, keys, and credentials.
+8. **Safe Commit & Push**: Commits changes and pushes only `origin ai/<task-id>`.
+9. **Ready For Review**: Updates `.ai/state.json` and `.ai/RESULT.md` to `READY_FOR_REVIEW`.
+10. **Lead AI Review**: Lead AI reviews the remote branch and `RESULT.md`.
 
 ## 4. Security & Safety Model
 
-- **Worker Mindset**: Sidekick is barred from making unilateral architectural changes. If ambiguous requirements or rule conflicts arise, Sidekick outputs status `BLOCKED`.
-- **Allowed Files Enforcement**: Sidekick cannot read or write outside paths declared in `Allowed Files` (except `.ai/RESULT.md`).
-- **Protected Paths**: `.git`, `.env`, and `.ai/DECISIONS.md` are strictly blocked from modification.
-- **Forbidden Commands**: Hard destructive commands (`rm -rf`, `git reset --hard`, `terraform apply`, `aws/gcloud/az write`, etc.) are blocked at the runner level.
-- **Secret Redaction**: Command output and logs automatically mask API keys, GitHub tokens (`gho_`, `ghp_`), and common credential patterns before writing to disk or logs.
-- **No Automatic Merge/Push**: Phase 1 forbids automatic merging into `main` or direct push to remotes.
+- **Worker Mindset**: Sidekick cannot make unilateral architectural changes. Ambiguities cause status `BLOCKED`.
+- **Allowed Files Enforcement & Diff Guard**: Files outside `Allowed Files` cannot be edited or committed.
+- **Protected Paths**: `.git`, `.env*`, and `.ai/DECISIONS.md` are strictly blocked.
+- **Destructive Command Blocking**: Commands matching `rm -rf`, `git reset --hard`, `terraform apply`, `aws/gcloud/az write` are intercepted and denied.
+- **Secret Redaction & Pre-commit Scanning**: Command outputs mask credentials, and git commits containing secrets are blocked.
+- **Git Branch Protection**: Local LLM never executes raw git commands. Only trusted Python logic executes git operations. Direct commit or push to `main` is blocked.
 
 ## 5. References
 
 - [Cognition: Local Fusion](https://cognition.com/blog/local-fusion)
+

@@ -197,47 +197,44 @@ Lead AI inspects `.ai/RESULT.md`, verifies the diff, and accepts or iterates.
 
 ---
 
-## Git Workflow & Safety
+## Git Workflow & Safety (Phase 1 & Phase 2)
 
-- **No automatic merge or push in Phase 1**: Sidekick only modifies local files and runs permitted checks.
-- When working on target projects, recommended branching convention:
-  ```text
-  main
-    │
-    └── ai/<task-id>
-  ```
-- Push to remote `main` by Sidekick is strictly forbidden.
+### Phase 1 Manual Workflow
+- **No automatic merge or push**: Sidekick modifies local files and runs permitted checks. Run with `scripts/run-sidekick.ps1`.
+
+### Phase 2 Autonomous Git Automation
+- When running via `scripts/run-sidekick-phase2.ps1` or `scripts/watch-sidekick.ps1`:
+  1. **Preflight Check**: Verifies clean git working tree and remote configuration.
+  2. **Automated Branching**: Automatically switches to or creates `ai/<task-id>` from base branch. Direct execution or push to `main` is strictly forbidden.
+  3. **Diff Guard**: Before commit, checks all modified files against `Allowed Files` (and `.ai/TASK.md` / `.ai/RESULT.md`). Any unauthorized modification immediately blocks commit and push (`status: BLOCKED`).
+  4. **Secret Scan**: Inspects changed files for API keys, AWS tokens, private keys, and high-entropy secrets. Detects and halts if any secret is found (`status: BLOCKED_SECRET_DETECTED`).
+  5. **Safe Commit & Push**: Commits changes with message `ai(<task-id>): <summary>` and pushes only to `origin ai/<task-id>`.
+  6. **Final Status**: Marks `.ai/state.json` and `.ai/RESULT.md` as `READY_FOR_REVIEW` for Lead AI or human review.
+
+---
+
+## Phase 2 Watcher Mode (Autonomous Background Worker)
+
+Run the Task Watcher to monitor `.ai/TASK.md` continuously:
+
+```powershell
+.\scripts\watch-sidekick.ps1 -Interval 5
+```
+
+- Calculates SHA256 hashes of `.ai/TASK.md` to prevent redundant runs.
+- Manages concurrency via `.ai/sidekick.lock` with automatic stale-lock recovery (600s timeout).
+- Logs execution state in `.ai/state.json`.
 
 ---
 
 ## Security Model
 
 - **Permanent Rules**: Stored in `.ai/RULES.md`.
-- **Allowed Files List**: Path traversal and access to undeclared files are blocked.
+- **Allowed Files List & Diff Guard**: Path traversal and access to undeclared files are blocked at execution and before Git commit.
 - **Immutable Files**: `.ai/DECISIONS.md`, `.git/`, and `.env*` cannot be altered.
 - **Destructive Command Blocking**: Commands matching `rm -rf`, `git reset --hard`, `terraform apply`, `aws/az/gcloud` write operations are intercepted and denied.
-- **Secret Redaction**: Detected GitHub tokens and passwords are automatically masked before writing logs or summaries.
-
----
-
-## Limitations (Phase 1)
-
-- Single-turn execution per runner invocation (plus self-fix retries).
-- File-based handoff (no live bidirectional streaming/IPC).
-- Local models must fit available GPU/CPU VRAM (recommended: 7B to 14B models for 8GB-16GB VRAM).
-
----
-
-## Phase 2 Roadmap
-
-The following items are planned for future phases:
-
-- [ ] File system watcher on `.ai/TASK.md` for automatic background triggering
-- [ ] Automated safe task branch creation (`ai/<task-id>`)
-- [ ] Direct Lead AI API integration (e.g., Gemini API / Anthropic API / OpenAI API)
-- [ ] Astra API integration
-- [ ] Multi-agent collaborative conversation protocol
-- [ ] Interactive terminal tool calling / live workspace sandboxing
+- **Secret Redaction & Pre-commit Scanning**: Detects and masks credentials in outputs; blocks commits containing raw secrets.
+- **Git Protection**: Local LLM never executes raw git commands; all git operations are performed by hardened Python manager. Push to `main` is blocked.
 
 ---
 
@@ -245,3 +242,4 @@ The following items are planned for future phases:
 
 This project's architecture and Lead/Worker division of labor concept is inspired by Cognition's Local Fusion:
 - [Cognition: Local Fusion](https://cognition.com/blog/local-fusion)
+

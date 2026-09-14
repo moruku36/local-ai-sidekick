@@ -1,4 +1,4 @@
-"""Orchestrator runner for Local AI Sidekick."""
+"""Orchestrator runner for Local AI Sidekick (supporting Phase 1 and Phase 2)."""
 import json
 import re
 import sys
@@ -10,6 +10,8 @@ from .security import SecurityPolicy
 from .task_parser import TaskDefinition
 from .ollama_client import OllamaClient
 from .workspace import WorkspaceManager
+from .git_manager import GitAutomationManager
+from .state_manager import SidekickState, LockManager
 
 class SidekickRunner:
     def __init__(self, repo_root: Path, config: Optional[SidekickConfig] = None):
@@ -19,6 +21,8 @@ class SidekickRunner:
             base_url=self.config.ollama_base_url,
             timeout_seconds=self.config.timeout_seconds
         )
+        self.git_manager = GitAutomationManager(self.repo_root)
+        self.state_file = self.repo_root / ".ai" / "state.json"
 
     def _explore_repository(self, task: TaskDefinition, workspace: WorkspaceManager, security_policy: SecurityPolicy) -> Tuple[List[str], Dict[str, str]]:
         """Explores allowed files and directories within configured limits."""
@@ -31,7 +35,6 @@ class SidekickRunner:
             target_path = self.repo_root / pat_clean
 
             if not target_path.exists():
-                # Potential new file
                 if pat_clean not in discovered_files:
                     discovered_files.append(pat_clean)
                 file_contents[pat_clean] = "(File does not exist yet - new file)"
@@ -42,7 +45,6 @@ class SidekickRunner:
                 if not security_policy.is_path_excluded(rel) and rel not in discovered_files:
                     discovered_files.append(rel)
             elif target_path.is_dir():
-                # Recurse directory safely
                 for p in sorted(target_path.rglob("*")):
                     if len(discovered_files) >= self.config.max_files:
                         break
@@ -69,13 +71,11 @@ class SidekickRunner:
 
             file_size = file_path.stat().st_size
             if file_size > self.config.max_file_bytes:
-                # Read prefix and mark truncated
                 with open(file_path, "r", encoding="utf-8", errors="replace") as f:
                     content = f.read(self.config.max_file_bytes) + "\n\n[TRUNCATED]"
             else:
                 content = workspace.read_file(rel)
 
-            # Check context budget
             content_bytes = len(content.encode("utf-8", errors="replace"))
             if total_context_bytes + content_bytes > self.config.max_context_bytes:
                 remaining_bytes = max(0, self.config.max_context_bytes - total_context_bytes)
@@ -117,6 +117,11 @@ class SidekickRunner:
     def execute(self) -> Dict[str, Any]:
         result_data = {
             "status": "BLOCKED",
+            "task_id": "",
+            "branch": "",
+            "commit_hash": "",
+            "push_status": "",
+            "automation_status": "IDLE",
             "summary": "",
             "files_changed": [],
             "commands_executed": [],
@@ -172,6 +177,33 @@ class SidekickRunner:
             self._write_result(result_data)
             return result_data
 
+        result_data["task_id"] = task.task_id
+
+        # Phase 2 Preflight & Branch creation
+        if self.config.auto_git:
+            print("[4.1/12] Performing Git Preflight Check (Phase 2)...")
+            ok, reason = self.git_manager.preflight_check(require_clean=self.config.require_clean_git)
+            if not ok:
+                result_data["status"] = "BLOCKED"
+                result_data["errors"] = f"Git Preflight Failed: {reason}"
+                result_data["summary"] = "Halted: Git state is not clean or valid."
+                self._write_result(result_data)
+                return result_data
+
+            if self.config.auto_branch:
+                print(f"[4.2/12] Ensuring task branch for '{task.task_id}'...")
+                b_ok, branch_name, b_msg = self.git_manager.ensure_task_branch(task.task_id)
+                if not b_ok:
+                    result_data["status"] = "BLOCKED"
+                    result_data["errors"] = f"Branch creation failed: {b_msg}"
+                    result_data["summary"] = "Halted: Failed to create task branch."
+                    self._write_result(result_data)
+                    return result_data
+                result_data["branch"] = branch_name
+                print(f"  -> {b_msg}")
+        else:
+            result_data["branch"] = self.git_manager.get_current_branch() or "local"
+
         # Step 5: Load DECISIONS.md
         print("[5/12] Loading DECISIONS.md...")
         decisions_file = self.repo_root / self.config.decisions_path
@@ -208,6 +240,7 @@ DECISIONS:
 {decisions_content}
 
 TASK:
+Task ID: {task.task_id}
 Goal: {task.goal}
 Background: {task.background}
 Requirements: {json.dumps(task.requirements, ensure_ascii=False)}
@@ -366,10 +399,98 @@ If you cannot safely proceed without violating rules or if design is ambiguous, 
         print("[11/12] Generating git diff summary...")
         result_data["git_diff_summary"] = workspace.get_git_diff_summary()
 
-        self._write_result(result_data)
+        # Step 12: Phase 2 Diff Guard, Secret Scan, Commit, and Push
+        if self.config.auto_git and result_data["status"] == "SUCCESS":
+            print("[12/12] Phase 2 Git Automation Pipeline...")
+            # 12.1 Diff Guard
+            extra_allowed = []
+            if self.config.commit_task_file:
+                extra_allowed.append(self.config.task_path)
+            if self.config.commit_result_file:
+                extra_allowed.append(self.config.result_path)
 
-        # Step 12: Waiting for human/Lead AI review
-        print(f"[12/12] Done. Final status: {result_data['status']}. Awaiting human/Lead AI review.")
+            d_ok, actual_changed, d_msg = self.git_manager.validate_diff_guard(
+                task.allowed_files, extra_allowed=extra_allowed
+            )
+            if not d_ok:
+                result_data["status"] = "BLOCKED"
+                result_data["errors"] = d_msg
+                result_data["automation_status"] = "BLOCKED"
+                self._write_result(result_data)
+                return result_data
+
+            # 12.2 Secret Scan
+            print("  -> Performing secret scan on changed files...")
+            s_ok, findings = self.git_manager.run_secret_scan_on_changed(actual_changed)
+            if not s_ok:
+                result_data["status"] = "BLOCKED_SECRET_DETECTED"
+                result_data["errors"] = f"Secrets detected in modified files:\n" + "\n".join(f"  {f}" for f in findings)
+                result_data["automation_status"] = "BLOCKED_SECRET_DETECTED"
+                print(f"  ! {result_data['errors']}")
+                self._write_result(result_data)
+                return result_data
+
+            # Write result file prior to commit if configured
+            self._write_result(result_data)
+
+            # 12.3 Safe Commit
+            if self.config.auto_commit:
+                print(f"  -> Creating commit for task {task.task_id}...")
+                commit_files = [
+                    f for f in actual_changed
+                    if f.replace("\\", "/") not in [".ai/state.json", ".ai/sidekick.lock"]
+                    and "__pycache__" not in f
+                    and not f.endswith((".pyc", ".pyo"))
+                ]
+                c_ok, c_hash, c_msg = self.git_manager.commit_changes(
+                    task.task_id, commit_files, message_suffix=result_data["summary"]
+                )
+                if not c_ok:
+                    result_data["status"] = "FAILED"
+                    result_data["errors"] = c_msg
+                    result_data["automation_status"] = "FAILED"
+                    self._write_result(result_data)
+                    return result_data
+                result_data["commit_hash"] = c_hash
+                print(f"  -> Committed commit {c_hash}: {c_msg}")
+
+            # 12.4 Safe Push
+            if self.config.auto_push:
+                print(f"  -> Pushing branch {result_data['branch']} to origin...")
+                p_ok, p_msg = self.git_manager.safe_push(result_data["branch"])
+                if not p_ok:
+                    result_data["push_status"] = "PUSH_FAILED"
+                    result_data["automation_status"] = "PUSH_FAILED"
+                    result_data["errors"] = p_msg
+                    self._write_result(result_data)
+                    return result_data
+                result_data["push_status"] = "SUCCESS"
+                result_data["automation_status"] = "READY_FOR_REVIEW"
+                print("  -> Successfully pushed task branch!")
+
+            # Update final state
+            state = SidekickState(
+                task_id=task.task_id,
+                branch=result_data["branch"],
+                status=result_data["status"],
+                commit_hash=result_data["commit_hash"],
+                push_status=result_data["push_status"],
+                automation_status=result_data["automation_status"],
+            )
+            state.save(self.state_file)
+            self._write_result(result_data)
+
+            print(f"\n=======================================================")
+            print(f"  *** READY_FOR_REVIEW ***")
+            print(f"  Task ID : {result_data['task_id']}")
+            print(f"  Branch  : {result_data['branch']}")
+            print(f"  Commit  : {result_data['commit_hash']}")
+            print(f"  Awaiting Lead AI / Human Review")
+            print(f"=======================================================\n")
+        else:
+            self._write_result(result_data)
+            print(f"[12/12] Done. Final status: {result_data['status']}. Awaiting human/Lead AI review.")
+
         return result_data
 
     def _extract_json(self, text: str) -> Optional[Dict[str, Any]]:
@@ -409,6 +530,26 @@ If you cannot safely proceed without violating rules or if design is ambiguous, 
 ## Status
 
 {res.get("status", "FAILED")}
+
+## Task ID
+
+{res.get("task_id", "") or "None"}
+
+## Branch
+
+{res.get("branch", "") or "None"}
+
+## Commit
+
+{res.get("commit_hash", "") or "None"}
+
+## Push Status
+
+{res.get("push_status", "") or "None"}
+
+## Automation Status
+
+{res.get("automation_status", "") or "None"}
 
 ## Summary
 
