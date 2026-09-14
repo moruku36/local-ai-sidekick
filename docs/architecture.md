@@ -1,4 +1,4 @@
-# Architecture Document: Local AI Sidekick (Fusion Lite Phase 1)
+# Architecture Document: Local AI Sidekick (v1.0)
 
 ## 1. Overview
 
@@ -7,7 +7,9 @@ Local AI Sidekick is designed to drastically reduce expensive cloud/frontier AI 
 - **Lead AI**: Operates at the architectural level, producing tasks, defining boundaries, and performing final code reviews.
 - **Local Sidekick**: Operates locally within the repository, performing local exploration, code modifications, testing, self-fixing, and structured result generation.
 
-Communication between Lead AI and Local Sidekick in Phase 1 is strictly file-mediated via Git and Markdown documents.
+Communication between Lead AI and Local Sidekick is file-mediated via Git and Markdown documents (`.ai/TASK.md` / `.ai/RESULT.md`).
+
+![Local AI Sidekick Technical Architecture](images/architecture.jpg)
 
 ```text
        Lead AI (Cloud / Frontier LLM)

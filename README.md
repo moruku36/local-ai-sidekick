@@ -15,6 +15,8 @@ In Phase 1, communication between Lead AI and Sidekick is file-mediated via Mark
 
 ## Architecture
 
+![Local AI Sidekick Technical Architecture](docs/images/architecture.jpg)
+
 ```text
 Lead AI
   │
