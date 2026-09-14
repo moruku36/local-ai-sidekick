@@ -223,3 +223,10 @@ The following items are planned for future phases:
 - [ ] Astra API integration
 - [ ] Multi-agent collaborative conversation protocol
 - [ ] Interactive terminal tool calling / live workspace sandboxing
+
+---
+
+## References & Acknowledgments
+
+This project's architecture and Lead/Worker division of labor concept is inspired by Cognition's Local Fusion:
+- [Cognition: Local Fusion](https://cognition.com/blog/local-fusion)

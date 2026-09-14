@@ -97,3 +97,7 @@ local-ai-sidekick/
 - **Forbidden Commands**: Hard destructive commands (`rm -rf`, `git reset --hard`, `terraform apply`, `aws/gcloud/az write`, etc.) are blocked at the runner level.
 - **Secret Redaction**: Command output and logs automatically mask API keys, GitHub tokens (`gho_`, `ghp_`), and common credential patterns before writing to disk or logs.
 - **No Automatic Merge/Push**: Phase 1 forbids automatic merging into `main` or direct push to remotes.
+
+## 5. References
+
+- [Cognition: Local Fusion](https://cognition.com/blog/local-fusion)
