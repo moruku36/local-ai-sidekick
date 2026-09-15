@@ -1,5 +1,9 @@
 # Local AI Sidekick (Fusion Lite Phase 1)
 
+> **検証終了（2026-09-15）:** Phase 1 / Phase 2 / Lead委譲の検証は、実用上の目的を満たせず終了しました。独立レビューは `REQUEST_CHANGES`。公開コードの安全性修正は未完了で、無人利用を推奨しません。以下の起動・機能説明は検証時点の記録です。
+>
+> 結果、失敗原因、未完了修正、次回への提案は [検証終了報告・考察](docs/experiment-retrospective-2026-09-15.md) を参照してください。
+
 > Local AI coding sidekick using Ollama and a lightweight Lead/Worker workflow.
 
 ## Purpose
