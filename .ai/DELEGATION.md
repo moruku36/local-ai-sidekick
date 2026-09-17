@@ -77,8 +77,13 @@ only after confirming no Worker is active; never clear a live lock by age.
 
 ## Host integration boundary
 
-Root AGENTS.md is the explicit repository-level Lead entrypoint. This repository
-contains no verified Astra/Antigravity-specific instruction-loading contract.
-For a host that does not load AGENTS.md, attach AGENTS.md and this policy as its
-workspace/system instructions once. README references alone do not activate
-automatic routing. No proprietary filenames or hidden model hooks are assumed.
+Root AGENTS.md is the explicit repository-level Lead entrypoint. Claude Code
+loads it automatically through the `@AGENTS.md` / `@.ai/DELEGATION.md` /
+`@.ai/RULES.md` imports in [CLAUDE.md](../CLAUDE.md) at the repository root,
+so this file remains the single source of truth for the LOCAL/LEAD/BLOCKED
+policy across every Lead Host; it must not be forked or copied per host.
+This repository contains no verified Astra/Antigravity-specific
+instruction-loading contract. For a Lead Host that does not load AGENTS.md
+automatically, attach AGENTS.md and this policy as its workspace/system
+instructions once. README references alone do not activate automatic
+routing. No proprietary filenames or hidden model hooks are assumed.
