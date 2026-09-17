@@ -13,12 +13,106 @@ In Phase 1, communication between Lead AI and Sidekick is file-mediated via Mark
 
 ---
 
-## Architecture
+## Automatic Delegation
+
+```text
+User -> Lead Host (Codex/Astra-compatible, Claude Code, ...) -> Delegation Policy -> LOCAL / LEAD / BLOCKED
+                                            |
+                                      LOCAL only
+                                            v
+TASK.md -> Existing Watcher -> Local Sidekick -> RESULT.md -> Lead Review
+                                  implementation / test / self-fix
+                                  ai/<task-id> -> READY_FOR_REVIEW
+```
+
+[AGENTS.md](AGENTS.md) instructs the Lead to apply
+[.ai/DELEGATION.md](.ai/DELEGATION.md) before each ordinary user request.
+The Lead classifies semantically; the standard-library helper validates the
+assessment and publishes TASK.md atomically. This is an instruction-driven
+delegation layer, not an independent natural-language classifier or a new daemon.
+`.ai/DELEGATION.md` is the single source of truth for this policy regardless of
+Lead Host: [CLAUDE.md](CLAUDE.md) imports it (and AGENTS.md/RULES.md) for
+Claude Code rather than duplicating it. See
+[Supported Lead Hosts](#supported-lead-hosts) below. For Astra/Antigravity or
+other hosts that do not load AGENTS.md, attach it and the policy to workspace
+instructions once; host-specific auto-loading beyond Claude Code is not
+verified here.
+
+- **LOCAL**: bounded exploration, small/medium implementation, refactoring,
+  tests, fixes, formatting, lint, README/docs/config, and repetitive edits.
+- **LEAD**: design, security/IAM, cloud/destructive/deployment decisions, final
+  review and Worker BLOCKED recovery.
+- **BLOCKED**: ambiguous requirements, unknown file scope, missing acceptance
+  criteria, low confidence or unsafe task data. No TASK is written.
+
+Prepare JSON following [the example](docs/delegation-request.example.json),
+stored outside the target repository so it cannot enter a Worker commit.
+Use concrete file paths, single-line fields, and commands from `SAFE_COMMANDS`
+in `src/sidekick/delegate.py`. Arbitrary shell/interpreter commands are rejected.
+
+```powershell
+# In the Sidekick installation repository; target can be the same or another repo.
+$env:PYTHONPATH = "$PWD\src"
+python -m sidekick.delegate --repo-root <target-repository> --request <assessment.json> --dry-run
+python -m sidekick.delegate --repo-root <target-repository> --request <assessment.json>
+# In another terminal, after reviewing target repo/remote and existing auto-push settings:
+.\scripts\watch-sidekick.ps1 -RepoRoot <target-repository>
+```
+
+On macOS/Linux use `PYTHONPATH=src python -m sidekick.delegate ...` and
+`PYTHONPATH=src python -m sidekick.cli --repo-root <target-repository> --watch`.
+Existing Phase 2/Ollama setup, RULES.md and decisions are still required in the
+target repository. The helper does not start the Watcher or alter push settings.
+
+Disable new automatic delegation with `$env:SIDEKICK_DELEGATION_ENABLED = "false"`
+(POSIX: `export SIDEKICK_DELEGATION_ENABLED=false`). Stop the Watcher with Ctrl+C
+to stop consuming already queued tasks; disabling delegation does not cancel them.
+
+**Troubleshooting:** QUEUED means submitted, not completed. If nothing runs,
+check the Watcher terminal, target path, Ollama/model availability and Git preflight.
+ALREADY_QUEUED/ALREADY_HANDLED is intentional deduplication. Review RESULT.md and
+state.json; use `--after-review` only after reviewing the previous terminal result.
+A corrected retry needs a new explicit task_id. BLOCKED/FAILED and interrupted
+runs do not restart on polling. Inspect a stale lock's owner and stop any live
+Worker before removing it; age alone is insufficient. Repair corrupt state from
+a trusted copy rather than deleting history. Delegation currently requires the
+default `.ai/TASK.md` path, even though the legacy CLI supports custom paths.
+
+## Supported Lead Hosts
+
+`AGENTS.md` and `.ai/DELEGATION.md` are host-agnostic; the following Lead
+Hosts are supported today, and both delegate LOCAL work to the same
+`sidekick.delegate` helper, the same Watcher, and the same Ollama Worker:
+
+- **Codex / Astra-compatible host**: loads `AGENTS.md` directly, or has it
+  attached to workspace/system instructions once if it does not auto-load
+  the file (see the note above).
+- **[Claude Code](https://claude.com/claude-code)**: loads `AGENTS.md`,
+  `.ai/DELEGATION.md` and `.ai/RULES.md` automatically through the
+  `@import`s in [CLAUDE.md](CLAUDE.md) at the repository root.
+
+No Worker code path is specific to either host.
+
+### Claude Code setup
+
+1. Open this repository as the project root in Claude Code (run `claude`
+   from this directory, or open the folder in the Claude desktop app).
+2. Claude Code automatically loads `CLAUDE.md`, which imports `AGENTS.md`,
+   `.ai/DELEGATION.md` and `.ai/RULES.md`. No extra configuration is needed.
+3. Verify the imports loaded by running `/memory` inside Claude Code; it
+   lists every file contributing to the active project instructions,
+   including the three imported files above.
+4. Give Claude Code an ordinary task. It applies the same LOCAL/LEAD/BLOCKED
+   policy as any other Lead Host and, for LOCAL work, runs
+   `sidekick.delegate` exactly as documented in
+   [Automatic Delegation](#automatic-delegation).
+
+## Existing Worker Architecture
 
 ![Local AI Sidekick Technical Architecture](docs/images/architecture.jpg)
 
 ```text
-Lead AI
+Lead Host (Codex/Astra-compatible, Claude Code, ...)
   │
   │ writes .ai/TASK.md
   ▼
@@ -224,7 +318,8 @@ Run the Task Watcher to monitor `.ai/TASK.md` continuously:
 ```
 
 - Calculates SHA256 hashes of `.ai/TASK.md` to prevent redundant runs.
-- Manages concurrency via `.ai/sidekick.lock` with automatic stale-lock recovery (600s timeout).
+- Manages concurrency via an exclusive `.ai/sidekick.lock` shared with delegation.
+  Stale locks require Lead inspection; elapsed time never steals a live Worker lock.
 - Logs execution state in `.ai/state.json`.
 
 ---

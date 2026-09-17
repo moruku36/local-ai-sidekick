@@ -7,6 +7,7 @@ from sidekick.config import SidekickConfig
 from sidekick.runner import SidekickRunner
 from sidekick.watcher import TaskWatcher
 from sidekick.state_manager import SidekickState
+from sidekick.delegate import submit
 
 class TestPhase2E2E(unittest.TestCase):
     def setUp(self):
@@ -45,6 +46,47 @@ class TestPhase2E2E(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.root_dir, ignore_errors=True)
         shutil.rmtree(self.remote_dir, ignore_errors=True)
+
+    def test_e2e_delegation_to_ready_for_review(self):
+        """Real Ollama + real tests/Git; remote is an isolated local bare repo."""
+        request = {
+            "decision": "LOCAL", "reason": "Bounded pure function and unit tests.",
+            "confidence": 0.95, "task_type": "code_change", "risk": "low",
+            "ambiguous": False, "requires_human_approval": False,
+            "task": {
+                "goal": "Implement capitalize_text(text) in src/cap.py using str.capitalize().",
+                "background": "Add a small pure string helper with no external dependencies.",
+                "allowed_files": ["src/cap.py", "tests/test_cap.py"],
+                "requirements": ["Use standard library unittest to test capitalize_text in tests/test_cap.py."],
+                "acceptance_criteria": ["Empty input returns empty; hello WORLD returns Hello world; all unit tests pass."],
+                "allowed_commands": ["python -m unittest discover tests"],
+                "review_points": ["Check implementation, test assertions, file scope and no dependencies."],
+            },
+        }
+        queued = submit(self.project_dir, request)
+        self.assertEqual(queued["status"], "QUEUED")
+        task_id = queued["task_id"]
+        self.assertEqual(submit(self.project_dir, request)["status"], "ALREADY_QUEUED")
+        config = SidekickConfig.load(self.project_dir)
+        config.model = "qwen2.5:14b"
+        config.auto_branch = config.auto_commit = config.auto_push = True
+        config.require_clean_git = True
+        watcher = TaskWatcher(self.project_dir, config)
+        outcome = watcher.run_once()
+        self.assertEqual(outcome["status"], "SUCCESS")
+        self.assertEqual(outcome["automation_status"], "READY_FOR_REVIEW")
+        self.assertEqual(outcome["branch"], "ai/" + task_id)
+        self.assertEqual(outcome["push_status"], "SUCCESS")
+        self.assertTrue(outcome["commit_hash"])
+        committed = subprocess.run(
+            ["git", "show", f"ai/{task_id}:.ai/RESULT.md"], cwd=self.remote_dir,
+            capture_output=True, text=True, check=True,
+        ).stdout
+        self.assertIn("READY_FOR_REVIEW", committed)
+        self.assertIn(task_id, committed)
+        self.assertIn(task_id, SidekickState.load(self.project_dir / ".ai/state.json").processed_tasks)
+        self.assertIsNone(watcher.run_once())
+        self.assertEqual(submit(self.project_dir, request)["status"], "ALREADY_HANDLED")
 
     def test_e2e_watcher_to_ready_for_review(self):
         # 1. Lead AI writes TASK.md

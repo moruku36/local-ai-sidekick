@@ -629,8 +629,11 @@ If you cannot safely proceed without violating rules or if design is ambiguous, 
         target.write_text(content, encoding="utf-8")
 
     def _save_state(self, task_id: str, res: Dict[str, Any]) -> None:
+        previous = SidekickState.load(self.state_file)
         state = SidekickState(
             task_id=task_id,
+            task_hash=previous.task_hash if previous.task_id == task_id else "",
+            processed_tasks=previous.processed_tasks,
             branch=res.get("branch", ""),
             status=res.get("status", "IDLE"),
             commit_hash=res.get("commit_hash", ""),
