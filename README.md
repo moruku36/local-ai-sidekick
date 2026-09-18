@@ -362,6 +362,27 @@ Run the Task Watcher to monitor `.ai/TASK.md` continuously:
 
 ---
 
+## Real Ollama E2E Tests
+
+The Phase 2 end-to-end tests invoke a **real local Ollama instance** and are intentionally opt-in. Standard GitHub-hosted CI runs the deterministic test suite and skips these two external-runtime tests.
+
+To run the real E2E suite locally after starting Ollama and installing `qwen2.5:14b`:
+
+```powershell
+$env:SIDEKICK_RUN_REAL_OLLAMA_E2E = "true"
+python -m unittest tests.test_phase2_e2e -v
+```
+
+On Linux/macOS:
+
+```bash
+SIDEKICK_RUN_REAL_OLLAMA_E2E=true python -m unittest tests.test_phase2_e2e -v
+```
+
+The E2E tests explicitly enable runtime RESULT.md commits because that behavior is now opt-in; production defaults remain fail-closed.
+
+---
+
 ## Security Model & Operational Notice
 
 > [!WARNING]
