@@ -206,6 +206,91 @@ class TestOnboarding(unittest.TestCase):
             self.assertEqual(len(ollama_fail), 1)
             self.assertIn("Connection refused", ollama_fail[0].message)
 
+    def test_security_invariants_preserved_across_framework_and_templates(self):
+        """Ensure critical Fail-Closed security invariants are synchronized across root policy and templates."""
+        from sidekick.onboarding import DEFAULT_DELEGATION_CONTENT, TEMPLATES_DIR
+
+        repo_root = Path(__file__).resolve().parent.parent
+        root_delegation = (repo_root / ".ai" / "DELEGATION.md").read_text(encoding="utf-8")
+        template_delegation = (TEMPLATES_DIR / "DELEGATION.md").read_text(encoding="utf-8")
+
+        delegation_sources = {
+            "root .ai/DELEGATION.md": root_delegation,
+            "template DELEGATION.md": template_delegation,
+            "DEFAULT_DELEGATION_CONTENT": DEFAULT_DELEGATION_CONTENT,
+        }
+
+        required_invariants = [
+            ("confidence threshold (0.8)", lambda text: "0.8" in text and "confidence" in text),
+            ("LOCAL requires low risk", lambda text: "risk: low" in text or "risk: \"low\"" in text),
+            ("LOCAL requires unambiguous", lambda text: "ambiguous: false" in text),
+            ("LOCAL requires no human approval flag", lambda text: "requires_human_approval: false" in text),
+            ("LEAD/BLOCKED never publish task", lambda text: "never publish a TASK" in text),
+            ("automatic merge forbidden", lambda text: "merge automatically" in text),
+        ]
+
+        for name, text in delegation_sources.items():
+            for desc, predicate in required_invariants:
+                self.assertTrue(predicate(text), f"Source '{name}' missing security invariant: {desc}")
+
+    def test_init_repo_contains_no_broken_framework_references(self):
+        """Initialized target repo files must not contain broken references to framework-internal paths."""
+        init_repo(self.test_dir)
+
+        generated_files = [
+            self.test_dir / "AGENTS.md",
+            self.test_dir / "CLAUDE.md",
+            self.test_dir / ".ai" / "DELEGATION.md",
+            self.test_dir / ".ai" / "RULES.md",
+            self.test_dir / ".ai" / "DECISIONS.md",
+        ]
+
+        broken_patterns = [
+            "src/sidekick/",
+            "docs/delegation-request.example.json",
+            "$PWD\\src",
+            "$PWD/src",
+            "PYTHONPATH = ",
+            "pip install -e .",
+        ]
+
+        for file_path in generated_files:
+            self.assertTrue(file_path.is_file(), f"Expected generated file missing: {file_path}")
+            content = file_path.read_text(encoding="utf-8")
+            for pattern in broken_patterns:
+                self.assertNotIn(
+                    pattern,
+                    content,
+                    f"Generated file '{file_path.name}' contains broken/non-portable pattern '{pattern}'",
+                )
+
+        # Verify relative links and imports in generated markdown resolve to existing files
+        import re
+        for file_path in generated_files:
+            content = file_path.read_text(encoding="utf-8")
+            # Check standard markdown links [text](path)
+            md_links = re.findall(r"\[.*?\]\((.*?)\)", content)
+            for link in md_links:
+                if link.startswith("http") or link.startswith("#"):
+                    continue
+                # strip query or anchor
+                clean_link = link.split("#")[0].split("?")[0]
+                if clean_link:
+                    resolved = (file_path.parent / clean_link).resolve()
+                    self.assertTrue(
+                        resolved.exists(),
+                        f"Broken markdown link '{link}' in '{file_path}' (resolved to non-existent '{resolved}')",
+                    )
+
+            # Check Claude Code @imports
+            claude_imports = re.findall(r"^@(\S+)", content, re.MULTILINE)
+            for imp in claude_imports:
+                resolved = (file_path.parent / imp).resolve()
+                self.assertTrue(
+                    resolved.exists(),
+                    f"Broken @import '@{imp}' in '{file_path}' (resolved to non-existent '{resolved}')",
+                )
+
 
 if __name__ == "__main__":
     unittest.main()

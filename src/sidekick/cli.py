@@ -55,7 +55,7 @@ def main():
             print("  [+] Updated .gitignore with runtime exclusions")
         print("\nNext steps:")
         print("  1. Run 'sidekick doctor' to verify local environment readiness")
-        print("  2. If using Claude Code / Codex / Astra, Lead AIs will auto-delegate to Sidekick")
+        print("  2. Compatible Lead Hosts can use the generated delegation entrypoints; host-specific instruction loading may require setup.")
         print("  3. For manual tasks, write .ai/TASK.md and run 'sidekick --watch' or 'sidekick --auto-git'")
         sys.exit(0)
 

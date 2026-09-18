@@ -8,8 +8,22 @@ This is semantic judgment by the Lead, not keyword routing in the helper.
 ## Decide
 
 Emit a concise decision with `decision: LOCAL | LEAD | BLOCKED`, `reason`, and
-`confidence: 0.0-1.0`. For LOCAL, also provide the structured fields in the
-[example](../docs/delegation-request.example.json).
+`confidence: 0.0-1.0`. For LOCAL, provide the structured assessment fields required by `sidekick-delegate`:
+- `task_id`: optional string (lowercase alphanumeric and `-`, or omitted for auto-digest)
+- `decision`: `"LOCAL"`
+- `reason`: short explanation
+- `confidence`: float >= 0.8
+- `task_type`: supported LOCAL type
+- `risk`: `"low"`
+- `ambiguous`: `false`
+- `requires_human_approval`: `false`
+- `goal`: single line description
+- `background`: single line context
+- `allowed_files`: list of repository-relative paths
+- `requirements`: list of strings
+- `acceptance_criteria`: list of strings
+- `allowed_commands`: list of approved verification commands
+- `review_points`: list of strings
 
 - LOCAL: scoped repository exploration / file search / structure inspection,
   small or medium code changes, boilerplate, refactoring, formatting, lint,
@@ -26,7 +40,10 @@ Emit a concise decision with `decision: LOCAL | LEAD | BLOCKED`, `reason`, and
   criteria, uncertainty (confidence below 0.8), or invalid/unsafe task details.
   Never call something low risk merely because it says "small fix" or "config".
 
-Use task_type from `LOCAL_TYPES` / `LEAD_TYPES` in `src/sidekick/delegate.py`.
+Use `task_type` validated by `sidekick-delegate`:
+- Supported LOCAL types: `exploration`, `code_change`, `boilerplate`, `refactoring`, `formatting`, `lint`, `unit_tests`, `test_fix`, `documentation`, `config`, `repetitive_edit`, `typing`, `imports`, `dead_code`.
+- Supported LEAD types: `architecture`, `cloud_architecture`, `security_architecture`, `threat_modeling`, `requirements`, `cross_system_design`, `trade_off`, `high_impact_change`, `destructive_operation`, `deployment`, `iam`, `credentials`, `terraform_apply`, `cloud_write`, `root_account`, `final_review`, `blocked_review`.
+
 For LOCAL require `risk: low`, `ambiguous: false`, and
 `requires_human_approval: false`. LEAD/BLOCKED never publish a TASK.
 
@@ -42,18 +59,17 @@ For LOCAL require `risk: low`, `ambiguous: false`, and
    Forbidden Operations is optional: helper always includes mandatory prohibitions.
 3. Write assessment JSON to a temporary path **outside the target repository**
    (UTF-8, not versioned). Never persist credentials, including in the assessment.
-4. Install the Sidekick package once (`python -m pip install -e .`) and run:
+4. Run `sidekick-delegate` CLI to validate and submit the task atomically:
 
    ```powershell
    sidekick-delegate --repo-root <target-repository> --request <assessment.json>
    ```
 
-   `--dry-run` validates without publishing. The module form
-   `python -m sidekick.delegate ...` remains equivalent when `src/` is on `PYTHONPATH`. LOCAL with `status: QUEUED` means the
+   `--dry-run` validates without publishing. LOCAL with `status: QUEUED` means the
    atomic handoff succeeded. ALREADY_QUEUED/ALREADY_HANDLED means stop submitting.
    BLOCKED returns exit code 2; resolve the reason before retrying. Never bypass
    helper validation by writing TASK.md directly for automatically delegated work.
-5. Ensure the user-authorized Watcher is running using the README instructions.
+5. Ensure the user-authorized Watcher is running in the background (`sidekick --repo-root <target-repository> --watch`).
    Enqueuing does not start a daemon or override Git/remote/push configuration.
    Report pending work honestly; do not claim implementation finished at QUEUED.
 6. Inspect `.ai/state.json` and `.ai/RESULT.md` when Worker finishes. Review

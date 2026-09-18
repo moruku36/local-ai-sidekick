@@ -57,7 +57,12 @@ This is semantic judgment by the Lead, not keyword routing in the helper.
 ## Decide
 
 Emit a concise decision with `decision: LOCAL | LEAD | BLOCKED`, `reason`, and
-`confidence: 0.0-1.0`.
+`confidence: 0.0-1.0`. For LOCAL, provide the structured assessment fields required by `sidekick-delegate`:
+- `decision`: `"LOCAL"`
+- `confidence`: float >= 0.8
+- `risk`: `"low"`
+- `ambiguous`: `false`
+- `requires_human_approval`: `false`
 
 - LOCAL: scoped repository exploration / file search / structure inspection,
   small or medium code changes, boilerplate, refactoring, formatting, lint,
@@ -75,6 +80,7 @@ Emit a concise decision with `decision: LOCAL | LEAD | BLOCKED`, `reason`, and
 
 For LOCAL require `risk: low`, `ambiguous: false`, and
 `requires_human_approval: false`. LEAD/BLOCKED never publish a TASK.
+Do not merge automatically.
 """
 
 DEFAULT_AGENTS_CONTENT = """# Lead AI entrypoint
@@ -88,8 +94,8 @@ This file is the Lead entrypoint for any Lead Host. Codex/Astra-compatible
 hosts load it directly; Claude Code loads it automatically through the
 `@AGENTS.md` import in [CLAUDE.md](CLAUDE.md) at the repository root.
 
-For LOCAL work, generate a bounded assessment and invoke `sidekick.delegate`
-as documented in the policy; the existing Watcher executes the Worker task.
+For LOCAL work, generate a bounded assessment and invoke `sidekick-delegate` CLI
+as documented in the policy; the running Sidekick Watcher executes the Worker task.
 For LEAD work, proceed as Lead. For BLOCKED work, resolve the missing decision
 with the user; do not guess, enqueue work, or repeatedly regenerate TASK.md.
 
@@ -111,6 +117,13 @@ in sync:
 @AGENTS.md
 @.ai/DELEGATION.md
 @.ai/RULES.md
+
+## Claude Code notes
+
+- Verify the imports loaded by running `/memory` inside Claude Code.
+- Invoke `sidekick-delegate` CLI directly:
+  `sidekick-delegate --repo-root . --request <path-to-assessment.json>`
+  No `PYTHONPATH` manipulation is needed when Local AI Sidekick is installed.
 """
 
 GITIGNORE_ENTRIES = """
@@ -515,7 +528,7 @@ def run_doctor(
                     "lead",
                     "Lead Host Entrypoints",
                     "FAIL",
-                    "Missing AGENTS.md and CLAUDE.md. Lead AIs (Claude Code, Codex, Astra) cannot discover delegation policy. Run 'sidekick init'.",
+                    "Missing AGENTS.md and CLAUDE.md. Lead AIs cannot discover delegation policy. Run 'sidekick init'.",
                 )
             )
         else:
@@ -524,7 +537,7 @@ def run_doctor(
                     "lead",
                     "Lead Host Entrypoints",
                     "INFO",
-                    "Lead Host entrypoints not configured (only required for Claude Code / Codex / Astra Lead delegation).",
+                    "Lead Host entrypoints not configured (only required for Lead delegation hosts like Claude Code).",
                 )
             )
 
