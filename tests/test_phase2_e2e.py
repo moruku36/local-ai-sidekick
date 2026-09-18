@@ -1,3 +1,4 @@
+import os
 import unittest
 import tempfile
 import shutil
@@ -9,6 +10,10 @@ from sidekick.watcher import TaskWatcher
 from sidekick.state_manager import SidekickState
 from sidekick.delegate import submit
 
+@unittest.skipUnless(
+    os.environ.get("SIDEKICK_RUN_REAL_OLLAMA_E2E", "").lower() in {"1", "true", "yes"},
+    "Real Ollama E2E is opt-in; set SIDEKICK_RUN_REAL_OLLAMA_E2E=true",
+)
 class TestPhase2E2E(unittest.TestCase):
     def setUp(self):
         self.root_dir = Path(tempfile.mkdtemp())
@@ -70,6 +75,7 @@ class TestPhase2E2E(unittest.TestCase):
         config = SidekickConfig.load(self.project_dir)
         config.model = "qwen2.5:14b"
         config.auto_branch = config.auto_commit = config.auto_push = True
+        config.commit_result_file = True
         config.require_clean_git = True
         watcher = TaskWatcher(self.project_dir, config)
         outcome = watcher.run_once()
@@ -132,6 +138,7 @@ We need to capitalize strings in src/cap.py.
         config.auto_branch = True
         config.auto_commit = True
         config.auto_push = True
+        config.commit_result_file = True
         config.require_clean_git = True # Validates that TASK.md does not block require_clean_git
 
         watcher = TaskWatcher(repo_root=self.project_dir, config=config)

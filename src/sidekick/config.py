@@ -63,10 +63,10 @@ class SidekickConfig:
             auto_git=get_bool("SIDEKICK_AUTO_GIT", False),
             auto_branch=get_bool("SIDEKICK_AUTO_BRANCH", True),
             auto_commit=get_bool("SIDEKICK_AUTO_COMMIT", True),
-            auto_push=get_bool("SIDEKICK_AUTO_PUSH", True),
+            auto_push=get_bool("SIDEKICK_AUTO_PUSH", False),
             create_pr=get_bool("SIDEKICK_CREATE_PR", False),
             watch_interval=int(get_val("SIDEKICK_WATCH_INTERVAL", "3")),
             require_clean_git=get_bool("SIDEKICK_REQUIRE_CLEAN_GIT", True),
-            commit_task_file=get_bool("SIDEKICK_COMMIT_TASK_FILE", True),
-            commit_result_file=get_bool("SIDEKICK_COMMIT_RESULT_FILE", True),
+            commit_task_file=get_bool("SIDEKICK_COMMIT_TASK_FILE", False),
+            commit_result_file=get_bool("SIDEKICK_COMMIT_RESULT_FILE", False),
         )

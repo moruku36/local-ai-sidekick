@@ -7,7 +7,7 @@ Local AI Sidekick is designed to drastically reduce expensive cloud/frontier AI 
 - **Lead AI**: Operates at the architectural level, producing tasks, defining boundaries, and performing final code reviews.
 - **Local Sidekick**: Operates locally within the repository, performing local exploration, code modifications, testing, self-fixing, and structured result generation.
 
-Communication between Lead AI and Local Sidekick is file-mediated via Git and Markdown documents (`.ai/TASK.md` / `.ai/RESULT.md`).
+Communication between Lead AI and Local Sidekick is file-mediated via local Markdown runtime documents (`.ai/TASK.md` / `.ai/RESULT.md`). The framework versions reusable examples under `templates/`; runtime task/result files are not part of the framework's tracked baseline.
 
 ![Local AI Sidekick Technical Architecture](images/architecture.jpg)
 
@@ -164,7 +164,11 @@ local-ai-sidekick/
 - **Secret Redaction & Pre-commit Scanning**: Command outputs mask credentials, and git commits containing secrets are blocked.
 - **Git Branch Protection**: Local LLM never executes raw git commands. Only trusted Python logic executes git operations. Direct commit or push to `main` is blocked.
 
-## 5. References
+## 5. Governance Integration
+
+For independent verification, machine-readable phase boundaries, evidence generation, and Human merge approval, see [AI Engineering Factory Integration](factory-integration.md). Local AI Sidekick remains the Worker; the Factory remains the governance/verifier layer.
+
+## 6. References
 
 - [Cognition: Local Fusion](https://cognition.com/blog/local-fusion)
 

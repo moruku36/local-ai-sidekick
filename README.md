@@ -1,6 +1,8 @@
-# Local AI Sidekick (Fusion Lite Phase 1)
+# Local AI Sidekick
 
-> Local AI coding sidekick using Ollama and a lightweight Lead/Worker workflow.
+> Local AI coding worker using Ollama, bounded Lead/Worker delegation, safe Git automation, and human review.
+
+[![CI](https://github.com/moruku36/local-ai-sidekick/actions/workflows/ci.yml/badge.svg)](https://github.com/moruku36/local-ai-sidekick/actions/workflows/ci.yml)
 
 ## Purpose
 
@@ -9,7 +11,20 @@ To significantly reduce expensive frontier AI token consumption by establishing 
 - **Lead AI**: Architecture design, strategic decisions, task scoping, and final code reviews.
 - **Local Sidekick**: Local repository exploration, implementation, testing, self-fixing, and structured result generation.
 
-In Phase 1, communication between Lead AI and Sidekick is file-mediated via Markdown (`.ai/TASK.md` and `.ai/RESULT.md`).
+Communication between Lead AI and Sidekick is file-mediated via local Markdown runtime files (`.ai/TASK.md` and `.ai/RESULT.md`). These runtime files are no longer tracked by the framework repository; reusable examples live under `templates/`.
+
+### Current scope
+
+| Capability | Status |
+| --- | --- |
+| Phase 1 manual local worker | Implemented |
+| Phase 2 safe branch / commit automation | Implemented |
+| Automatic LOCAL / LEAD / BLOCKED delegation | Implemented |
+| Claude Code Lead integration | Implemented |
+| Automatic push | **Opt-in only; default OFF** |
+| Automatic merge | Not supported |
+
+For independent verification and human approval boundaries, see [AI Engineering Factory Integration](docs/factory-integration.md).
 
 ---
 
@@ -51,16 +66,14 @@ Use concrete file paths, single-line fields, and commands from `SAFE_COMMANDS`
 in `src/sidekick/delegate.py`. Arbitrary shell/interpreter commands are rejected.
 
 ```powershell
-# In the Sidekick installation repository; target can be the same or another repo.
-$env:PYTHONPATH = "$PWD\src"
-python -m sidekick.delegate --repo-root <target-repository> --request <assessment.json> --dry-run
-python -m sidekick.delegate --repo-root <target-repository> --request <assessment.json>
-# In another terminal, after reviewing target repo/remote and existing auto-push settings:
+# After installing this repository with pip install -e .
+sidekick-delegate --repo-root <target-repository> --request <assessment.json> --dry-run
+sidekick-delegate --repo-root <target-repository> --request <assessment.json>
+# In another terminal, after reviewing target repo/remote and push settings:
 .\scripts\watch-sidekick.ps1 -RepoRoot <target-repository>
 ```
 
-On macOS/Linux use `PYTHONPATH=src python -m sidekick.delegate ...` and
-`PYTHONPATH=src python -m sidekick.cli --repo-root <target-repository> --watch`.
+On macOS/Linux use `sidekick-delegate ...` and `sidekick --repo-root <target-repository> --watch`.
 Existing Phase 2/Ollama setup, RULES.md and decisions are still required in the
 target repository. The helper does not start the Watcher or alter push settings.
 
@@ -135,7 +148,12 @@ Local Repository
   │   └── sidekick.example.env
   │
   ├── docs/
-  │   └── architecture.md
+  │   ├── architecture.md
+  │   └── factory-integration.md
+  │
+  ├── templates/
+  │   ├── TASK.example.md
+  │   └── RESULT.example.md
   │
   └── README.md
         │
@@ -199,10 +217,11 @@ Any installed model can also be specified through the environment variable `SIDE
 
 ## Installation & Configuration
 
-1. Clone or navigate to the repository:
+1. Clone and install the package:
    ```powershell
    git clone https://github.com/moruku36/local-ai-sidekick.git
    cd local-ai-sidekick
+   python -m pip install -e .
    ```
 
 2. (Optional) Create local configuration from example:
@@ -210,11 +229,22 @@ Any installed model can also be specified through the environment variable `SIDE
    Copy-Item config\sidekick.example.env .env
    ```
 
+3. For manual TASK.md workflow, copy the runtime templates. Automatic delegation creates `.ai/TASK.md` atomically, so this is not required for delegated tasks.
+   ```powershell
+   Copy-Item templates\TASK.example.md .ai\TASK.md
+   Copy-Item templates\RESULT.example.md .ai\RESULT.md
+   ```
+
+   `.ai/TASK.md` and `.ai/RESULT.md` are runtime files: the framework `.gitignore` keeps them out of normal Git status/commits, and Sidekick does not commit them by default. Explicit opt-in commit settings force-add only these known runtime paths after secret scanning.
+
 Configuration parameters:
 - `SIDEKICK_OLLAMA_BASE_URL`: Ollama endpoint (default: `http://localhost:11434`)
-- `SIDEKICK_MODEL`: Default model (default: `qwen2.5-coder:7b`)
+- `SIDEKICK_MODEL`: Default model (default: `qwen2.5:14b`)
 - `SIDEKICK_MAX_RETRIES`: Number of self-fix attempts upon test failure (default: `2`)
 - `SIDEKICK_TIMEOUT_SECONDS`: Request timeout in seconds (default: `180`)
+- `SIDEKICK_AUTO_PUSH`: Push task branches automatically (**default: `false`**)
+- `SIDEKICK_COMMIT_TASK_FILE`: Commit runtime TASK.md (**default: `false`**)
+- `SIDEKICK_COMMIT_RESULT_FILE`: Commit runtime RESULT.md (**default: `false`**)
 
 ---
 
@@ -257,7 +287,13 @@ Need a string reverser in src/text_utils.py.
 
 ## Running Sidekick
 
-Run using the PowerShell wrapper (Windows first-class support):
+After `pip install -e .`, the primary CLI is:
+
+```powershell
+sidekick --repo-root .
+```
+
+The existing PowerShell wrapper remains available for compatibility:
 
 ```powershell
 .\scripts\run-sidekick.ps1
@@ -271,8 +307,10 @@ Options:
 On Linux / macOS:
 
 ```bash
-./scripts/run-sidekick --repo-root . --model qwen2.5-coder:7b
+sidekick --repo-root . --model qwen2.5:14b
 ```
+
+The `./scripts/run-sidekick` wrapper remains available.
 
 ---
 
@@ -304,7 +342,7 @@ Lead AI inspects `.ai/RESULT.md`, verifies the diff, and accepts or iterates.
   2. **Automated Branching**: Automatically switches to or creates `ai/<task-id>` from base branch. Direct execution or push to `main` is strictly forbidden.
   3. **Diff Guard**: Before commit, checks all modified files against `Allowed Files` (and `.ai/TASK.md` / `.ai/RESULT.md`). Any unauthorized modification immediately blocks commit and push (`status: BLOCKED`).
   4. **Secret Scan**: Inspects changed files for API keys, AWS tokens, private keys, and high-entropy secrets. Detects and halts if any secret is found (`status: BLOCKED_SECRET_DETECTED`).
-  5. **Safe Commit & Push**: Commits changes with message `ai(<task-id>): <summary>` and pushes only to `origin ai/<task-id>`.
+  5. **Safe Commit & Push**: Commits source changes with message `ai(<task-id>): <summary>`. Push is **disabled by default** and, when explicitly enabled, is restricted to `origin ai/<task-id>`.
   6. **Final Status**: Marks `.ai/state.json` and `.ai/RESULT.md` as `READY_FOR_REVIEW` for Lead AI or human review.
 
 ---
@@ -324,6 +362,27 @@ Run the Task Watcher to monitor `.ai/TASK.md` continuously:
 
 ---
 
+## Real Ollama E2E Tests
+
+The Phase 2 end-to-end tests invoke a **real local Ollama instance** and are intentionally opt-in. Standard GitHub-hosted CI runs the deterministic test suite and skips these two external-runtime tests.
+
+To run the real E2E suite locally after starting Ollama and installing `qwen2.5:14b`:
+
+```powershell
+$env:SIDEKICK_RUN_REAL_OLLAMA_E2E = "true"
+python -m unittest tests.test_phase2_e2e -v
+```
+
+On Linux/macOS:
+
+```bash
+SIDEKICK_RUN_REAL_OLLAMA_E2E=true python -m unittest tests.test_phase2_e2e -v
+```
+
+The E2E tests explicitly enable runtime RESULT.md commits because that behavior is now opt-in; production defaults remain fail-closed.
+
+---
+
 ## Security Model & Operational Notice
 
 > [!WARNING]
@@ -336,7 +395,9 @@ Run the Task Watcher to monitor `.ai/TASK.md` continuously:
 - **Destructive Command Blocking**: Commands matching `rm -rf`, `git reset --hard`, `terraform apply`, `aws/az/gcloud` write operations are intercepted and denied.
 - **Secret Redaction & Pre-commit Scanning**: Detects and masks credentials in outputs; blocks commits containing raw secrets.
 - **Git Protection**: Local LLM never executes raw git commands; all git operations are performed by hardened Python manager. Push to `main` is blocked.
-- **Task Data Isolation Recommendation**: This repository provides the sidekick framework. For actual proprietary projects, configure the sidekick in your target project repository rather than committing sensitive operational `TASK.md`/`RESULT.md` into public templates.
+- **Runtime Task Data**: `.ai/TASK.md` / `.ai/RESULT.md` are ignored runtime files; versioned examples live under `templates/`. Sidekick does not commit them by default. Versioned examples live under `templates/`.
+- **Task Data Isolation Recommendation**: This repository provides the sidekick framework. For actual proprietary projects, configure the sidekick in your target project repository rather than committing sensitive operational task/result data.
+- **Independent Verification**: For stronger evidence, phase contracts, and merge approval boundaries, use the [AI Engineering Factory integration path](docs/factory-integration.md).
 
 ---
 
@@ -350,4 +411,7 @@ This project is licensed under the [MIT License](LICENSE).
 
 This project's architecture and Lead/Worker division of labor concept is inspired by Cognition's Local Fusion:
 - [Cognition: Local Fusion](https://cognition.com/blog/local-fusion)
+
+Related project:
+- [AI Engineering Factory integration](docs/factory-integration.md) — independent verification, phase contracts, and human-approved merge boundaries
 
