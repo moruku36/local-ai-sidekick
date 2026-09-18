@@ -174,16 +174,8 @@ class GitAutomationManager:
 
     def commit_changes(self, task_id: str, commit_files: List[str], message_suffix: str = "") -> Tuple[bool, str, str]:
         """Stages only allowed changed files and creates a commit."""
-        force_add_runtime = {
-            ".ai/TASK.md", ".ai/RESULT.md", ".ai/task.md", ".ai/result.md"
-        }
         for rel in commit_files:
-            normalized = rel.replace("\\", "/")
-            add_args = ["add"]
-            if normalized in force_add_runtime:
-                add_args.append("-f")
-            add_args.append(rel)
-            code, _, err = self._run_git(add_args)
+            code, _, err = self._run_git(["add", rel])
             if code != 0:
                 return False, "", f"Failed staging file {rel}: {err}"
 
