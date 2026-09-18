@@ -235,7 +235,7 @@ Any installed model can also be specified through the environment variable `SIDE
    Copy-Item templates\RESULT.example.md .ai\RESULT.md
    ```
 
-   `.ai/TASK.md` and `.ai/RESULT.md` are runtime files and are no longer versioned by this framework repository. Sidekick also excludes them from its own commits by default. If you add them to a local `.git/info/exclude`, keep `SIDEKICK_COMMIT_TASK_FILE=false` and `SIDEKICK_COMMIT_RESULT_FILE=false`.
+   `.ai/TASK.md` and `.ai/RESULT.md` are runtime files: the framework `.gitignore` keeps them out of normal Git status/commits, and Sidekick does not commit them by default. Explicit opt-in commit settings force-add only these known runtime paths after secret scanning.
 
 Configuration parameters:
 - `SIDEKICK_OLLAMA_BASE_URL`: Ollama endpoint (default: `http://localhost:11434`)
@@ -374,7 +374,7 @@ Run the Task Watcher to monitor `.ai/TASK.md` continuously:
 - **Destructive Command Blocking**: Commands matching `rm -rf`, `git reset --hard`, `terraform apply`, `aws/az/gcloud` write operations are intercepted and denied.
 - **Secret Redaction & Pre-commit Scanning**: Detects and masks credentials in outputs; blocks commits containing raw secrets.
 - **Git Protection**: Local LLM never executes raw git commands; all git operations are performed by hardened Python manager. Push to `main` is blocked.
-- **Runtime Task Data**: `.ai/TASK.md` / `.ai/RESULT.md` are runtime files and are not versioned by the framework; Sidekick does not commit them by default. Versioned examples live under `templates/`.
+- **Runtime Task Data**: `.ai/TASK.md` / `.ai/RESULT.md` are ignored runtime files; versioned examples live under `templates/`. Sidekick does not commit them by default. Versioned examples live under `templates/`.
 - **Task Data Isolation Recommendation**: This repository provides the sidekick framework. For actual proprietary projects, configure the sidekick in your target project repository rather than committing sensitive operational task/result data.
 - **Independent Verification**: For stronger evidence, phase contracts, and merge approval boundaries, use the [AI Engineering Factory integration path](docs/factory-integration.md).
 
