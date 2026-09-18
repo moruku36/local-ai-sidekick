@@ -1,9 +1,12 @@
 import unittest
 import tempfile
 import shutil
+import os
 from pathlib import Path
+from unittest.mock import patch
 from sidekick.task_parser import TaskDefinition
 from sidekick.security import SecurityPolicy
+from sidekick.config import SidekickConfig
 
 class TestTaskParser(unittest.TestCase):
     def test_parse_task(self):
@@ -45,6 +48,24 @@ Need basic math operations.
         self.assertEqual(task.acceptance_criteria, ["pytest passes"])
         self.assertEqual(task.allowed_commands, ["python -m unittest", "pytest"])
         self.assertEqual(task.review_points, ["Type annotations"])
+
+
+class TestConfigDefaults(unittest.TestCase):
+    def test_git_publishing_defaults_are_fail_closed(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, {}, clear=True):
+            config = SidekickConfig.load(Path(tmp))
+        self.assertFalse(config.auto_git)
+        self.assertFalse(config.auto_push)
+        self.assertFalse(config.create_pr)
+        self.assertFalse(config.commit_task_file)
+        self.assertFalse(config.commit_result_file)
+
+    def test_auto_push_requires_explicit_opt_in(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(
+            os.environ, {"SIDEKICK_AUTO_PUSH": "true"}, clear=True
+        ):
+            config = SidekickConfig.load(Path(tmp))
+        self.assertTrue(config.auto_push)
 
 class TestSecurityPolicy(unittest.TestCase):
     def setUp(self):
