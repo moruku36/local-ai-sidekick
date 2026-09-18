@@ -25,6 +25,7 @@ Communication between Lead AI and Sidekick is file-mediated via local Markdown r
 | Automatic merge | Not supported |
 
 For independent verification and human approval boundaries, see [AI Engineering Factory Integration](docs/factory-integration.md).
+For security model, threat boundaries, and vulnerability reporting, see [Security Policy](SECURITY.md).
 
 ---
 

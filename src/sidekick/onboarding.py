@@ -10,6 +10,16 @@ from typing import Any
 from .config import SidekickConfig
 from .security import EXCLUDED_EXPLORATION_DIRS, EXCLUDED_FILE_PATTERNS
 
+TEMPLATES_DIR = Path(__file__).parent / "templates"
+
+
+def _read_template_or_default(filename: str, default_content: str) -> str:
+    template_path = TEMPLATES_DIR / filename
+    if template_path.is_file():
+        return template_path.read_text(encoding="utf-8")
+    return default_content
+
+
 DEFAULT_RULES_CONTENT = """# Permanent Rules
 
 - TASK.mdに明記された範囲外を変更しない
@@ -37,15 +47,70 @@ Sidekick must respect these decisions and must NOT modify this file.
 - **Date**: 2026-09-19
 """
 
-DEFAULT_DELEGATION_CONTENT = """# Delegation Policy
+DEFAULT_DELEGATION_CONTENT = """# Automatic Delegation Policy (Lead only)
 
-## Purpose
-Guidelines for Lead AI determining whether a task is delegated to Local AI Sidekick or retained by Lead.
+Apply this policy to ordinary user requests automatically, before implementation.
+User instructions override routing preferences, but never authorize weakening
+the Worker's guards. `SIDEKICK_DELEGATION_ENABLED=false` keeps work with Lead.
+This is semantic judgment by the Lead, not keyword routing in the helper.
 
-## Decision Matrix
-- **LOCAL**: Self-contained, bounded tasks with clear automated tests and low architectural risk.
-- **LEAD**: Architectural design, cross-cutting refactoring, production configuration, or ambiguous scope.
-- **BLOCKED**: Requires human clarification, missing approval token, or forbidden operations.
+## Decide
+
+Emit a concise decision with `decision: LOCAL | LEAD | BLOCKED`, `reason`, and
+`confidence: 0.0-1.0`.
+
+- LOCAL: scoped repository exploration / file search / structure inspection,
+  small or medium code changes, boilerplate, refactoring, formatting, lint,
+  unit test creation/execution, test failure fixes, documentation/README/config
+  edits, repetitive edits, typing/import/dead-code cleanup, and bounded changes
+  for diff review with explicit acceptance criteria.
+- LEAD: architecture/cloud/security design, threat modeling, requirements
+  definition, cross-system design, trade-offs, high-impact changes, destructive
+  operation decisions, production deployment decisions, IAM/credentials/secrets,
+  Terraform apply, cloud writes, root/management account operations, final review,
+  and decisions following a Worker BLOCKED result.
+- BLOCKED: ambiguous requirements, unknown Allowed Files, insufficient acceptance
+  criteria, uncertainty (confidence below 0.8), or invalid/unsafe task details.
+  Never call something low risk merely because it says "small fix" or "config".
+
+For LOCAL require `risk: low`, `ambiguous: false`, and
+`requires_human_approval: false`. LEAD/BLOCKED never publish a TASK.
+"""
+
+DEFAULT_AGENTS_CONTENT = """# Lead AI entrypoint
+
+Before acting on each user task, read [.ai/DELEGATION.md](.ai/DELEGATION.md)
+and [.ai/RULES.md](.ai/RULES.md). Apply the delegation decision before doing
+substantial exploration, implementation, or tests. Lead owns scoping, design,
+security decisions, changes to this delegation layer, and final review.
+
+This file is the Lead entrypoint for any Lead Host. Codex/Astra-compatible
+hosts load it directly; Claude Code loads it automatically through the
+`@AGENTS.md` import in [CLAUDE.md](CLAUDE.md) at the repository root.
+
+For LOCAL work, generate a bounded assessment and invoke `sidekick.delegate`
+as documented in the policy; the existing Watcher executes the Worker task.
+For LEAD work, proceed as Lead. For BLOCKED work, resolve the missing decision
+with the user; do not guess, enqueue work, or repeatedly regenerate TASK.md.
+
+These instructions target the Lead only. The Ollama Worker follows its existing
+system prompt, RULES.md and TASK.md; it must never delegate back to itself.
+"""
+
+DEFAULT_CLAUDE_CONTENT = """# Claude Code — Lead Host entrypoint
+
+Claude Code is a **Lead Host** for this repository, equivalent to any
+Codex/Astra-compatible host. It follows the same Lead/Worker delegation
+workflow, not a Claude-specific one. The policy is defined once, in
+`.ai/DELEGATION.md`; nothing below restates it.
+
+The imports below load the existing, host-agnostic instructions so Claude
+Code sees exactly what any other Lead Host sees — no separate copy to keep
+in sync:
+
+@AGENTS.md
+@.ai/DELEGATION.md
+@.ai/RULES.md
 """
 
 GITIGNORE_ENTRIES = """
@@ -58,8 +123,12 @@ GITIGNORE_ENTRIES = """
 """
 
 
-def init_repo(repo_root: Path, force: bool = False) -> dict[str, Any]:
-    """Initialize a target repository with .ai/ configuration and standard templates."""
+def init_repo(
+    repo_root: Path,
+    force: bool = False,
+    include_lead_entrypoints: bool = True,
+) -> dict[str, Any]:
+    """Initialize a target repository with .ai/ configuration, canonical policies, and Lead entrypoints."""
     repo_root = repo_root.resolve()
     repo_root.mkdir(parents=True, exist_ok=True)
 
@@ -69,11 +138,24 @@ def init_repo(repo_root: Path, force: bool = False) -> dict[str, Any]:
     created_files: list[str] = []
     skipped_files: list[str] = []
 
+    # Canonical files to create
+    rules_content = _read_template_or_default("RULES.md", DEFAULT_RULES_CONTENT)
+    decisions_content = _read_template_or_default("DECISIONS.md", DEFAULT_DECISIONS_CONTENT)
+    delegation_content = _read_template_or_default("DELEGATION.md", DEFAULT_DELEGATION_CONTENT)
+
     files_to_create = [
-        (ai_dir / "RULES.md", DEFAULT_RULES_CONTENT),
-        (ai_dir / "DECISIONS.md", DEFAULT_DECISIONS_CONTENT),
-        (ai_dir / "DELEGATION.md", DEFAULT_DELEGATION_CONTENT),
+        (ai_dir / "RULES.md", rules_content),
+        (ai_dir / "DECISIONS.md", decisions_content),
+        (ai_dir / "DELEGATION.md", delegation_content),
     ]
+
+    if include_lead_entrypoints:
+        agents_content = _read_template_or_default("AGENTS.md", DEFAULT_AGENTS_CONTENT)
+        claude_content = _read_template_or_default("CLAUDE.md", DEFAULT_CLAUDE_CONTENT)
+        files_to_create.extend([
+            (repo_root / "AGENTS.md", agents_content),
+            (repo_root / "CLAUDE.md", claude_content),
+        ])
 
     for target_path, content in files_to_create:
         if not target_path.exists() or force:
@@ -87,7 +169,11 @@ def init_repo(repo_root: Path, force: bool = False) -> dict[str, Any]:
     gitignore_updated = False
     if gitignore_path.exists():
         current_content = gitignore_path.read_text(encoding="utf-8")
-        needed_entries = [line.strip() for line in GITIGNORE_ENTRIES.strip().splitlines() if line.strip() and not line.startswith("#")]
+        needed_entries = [
+            line.strip()
+            for line in GITIGNORE_ENTRIES.strip().splitlines()
+            if line.strip() and not line.startswith("#")
+        ]
         missing = [e for e in needed_entries if e not in current_content]
         if missing:
             with open(gitignore_path, "a", encoding="utf-8") as f:
@@ -116,6 +202,7 @@ class CheckItem:
 @dataclass
 class DoctorReport:
     repo_root: Path
+    mode: str = "all"
     checks: list[CheckItem] = field(default_factory=list)
 
     @property
@@ -138,6 +225,7 @@ class DoctorReport:
         lines = [
             "=== Local AI Sidekick Doctor ===",
             f"Target Repository: {self.repo_root}",
+            f"Diagnostics Mode:  {self.mode}",
             "",
         ]
 
@@ -146,10 +234,11 @@ class DoctorReport:
             categories.setdefault(c.category, []).append(c)
 
         category_labels = {
-            "git": "Git Environment",
-            "governance": "Governance & Templates (.ai/)",
-            "ollama": "Ollama Service & Model",
-            "security": "Security Policies & Configuration",
+            "git": "Git Environment & Preflight",
+            "governance": "Governance & Policy Files (.ai/)",
+            "lead": "Lead Host Integration (AGENTS.md / CLAUDE.md)",
+            "ollama": "Ollama Service & Model Availability",
+            "security": "Security Policies & Guardrails",
         }
 
         for cat_key, label in category_labels.items():
@@ -164,25 +253,38 @@ class DoctorReport:
         lines.append("--------------------------------------------------")
         if self.has_failures:
             lines.append(
-                f"Doctor Summary: {self.ok_count} passed, {self.warn_count} warnings, {self.fail_count} failures. "
-                "Action required before running automated tasks."
+                f"Doctor Summary: Mode '{self.mode}' — {self.fail_count} failure(s), "
+                f"{self.warn_count} warning(s), {self.ok_count} passed.\n"
+                "Status: EXECUTION BLOCKED. Resolve the failures above before running tasks."
             )
         else:
             lines.append(
-                f"Doctor Summary: {self.ok_count} passed, {self.warn_count} warnings, 0 failures. "
-                "System is healthy and ready."
+                f"Doctor Summary: Mode '{self.mode}' — {self.ok_count} passed, "
+                f"{self.warn_count} warning(s), 0 failures.\n"
+                "Status: READY FOR EXECUTION."
             )
 
         return "\n".join(lines)
 
 
-def run_doctor(repo_root: Path, config: SidekickConfig | None = None) -> DoctorReport:
-    """Diagnose repository readiness, Ollama connectivity, model availability, and guardrails."""
+def run_doctor(
+    repo_root: Path,
+    config: SidekickConfig | None = None,
+    mode: str = "all",
+) -> DoctorReport:
+    """Diagnose repository readiness, Ollama connectivity, model availability, and guardrails.
+
+    Modes:
+        - "all": Thorough check across Phase 1, Phase 2, delegation, and security bounds.
+        - "phase1": Manual single-run execution checks.
+        - "phase2": Autonomous Git automation preflight checks (strictly requires clean working tree).
+        - "delegation": Checks automatic delegation router and Lead Host entrypoints.
+    """
     repo_root = repo_root.resolve()
     if config is None:
         config = SidekickConfig.load(repo_root)
 
-    report = DoctorReport(repo_root=repo_root)
+    report = DoctorReport(repo_root=repo_root, mode=mode)
 
     # 1. Git Checks
     try:
@@ -247,14 +349,25 @@ def run_doctor(repo_root: Path, config: SidekickConfig | None = None) -> DoctorR
                     CheckItem("git", "Remote Origin", "OK", f"Configured remote: {r_res.stdout.strip()}")
                 )
             else:
-                report.checks.append(
-                    CheckItem(
-                        "git",
-                        "Remote Origin",
-                        "WARN",
-                        "No 'origin' remote configured. Remote publishing requires a valid git remote.",
+                if mode in ("phase2", "all") and config.auto_push:
+                    report.checks.append(
+                        CheckItem(
+                            "git",
+                            "Remote Origin",
+                            "FAIL",
+                            "No 'origin' remote configured, but SIDEKICK_AUTO_PUSH is enabled. "
+                            "Remote publishing strictly requires a valid git remote.",
+                        )
                     )
-                )
+                else:
+                    report.checks.append(
+                        CheckItem(
+                            "git",
+                            "Remote Origin",
+                            "WARN",
+                            "No 'origin' remote configured. Remote publishing requires a valid git remote.",
+                        )
+                    )
 
             # Working tree status
             s_res = subprocess.run(
@@ -268,14 +381,26 @@ def run_doctor(repo_root: Path, config: SidekickConfig | None = None) -> DoctorR
             )
             dirty_files = [line for line in s_res.stdout.splitlines() if line.strip()]
             if dirty_files:
-                report.checks.append(
-                    CheckItem(
-                        "git",
-                        "Working Tree",
-                        "INFO",
-                        f"{len(dirty_files)} uncommitted file(s) present. Git preflight requires a clean tree before running tasks.",
+                if mode in ("phase2", "all"):
+                    report.checks.append(
+                        CheckItem(
+                            "git",
+                            "Working Tree",
+                            "FAIL",
+                            f"Working tree has {len(dirty_files)} uncommitted file(s). "
+                            "Phase 2 preflight check requires a clean tree before running tasks.",
+                        )
                     )
-                )
+                else:
+                    report.checks.append(
+                        CheckItem(
+                            "git",
+                            "Working Tree",
+                            "WARN",
+                            f"{len(dirty_files)} uncommitted file(s) present. "
+                            "Clean working tree is recommended before starting tasks.",
+                        )
+                    )
             else:
                 report.checks.append(CheckItem("git", "Working Tree", "OK", "Working tree is clean."))
         else:
@@ -301,14 +426,20 @@ def run_doctor(repo_root: Path, config: SidekickConfig | None = None) -> DoctorR
 
     rules_file = repo_root / config.rules_path
     if rules_file.is_file():
-        report.checks.append(CheckItem("governance", "RULES.md", "OK", f"Found permanent rules at {config.rules_path}."))
+        rules_text = rules_file.read_text(encoding="utf-8")
+        if "Permanent Rules" in rules_text and "TASK.md" in rules_text:
+            report.checks.append(CheckItem("governance", "RULES.md", "OK", f"Found permanent rules at {config.rules_path}."))
+        else:
+            report.checks.append(
+                CheckItem("governance", "RULES.md", "WARN", f"{config.rules_path} does not contain standard rules.")
+            )
     else:
         report.checks.append(
             CheckItem(
                 "governance",
                 "RULES.md",
-                "WARN",
-                f"Missing {config.rules_path}. Recommended for defining worker boundaries.",
+                "FAIL",
+                f"Missing {config.rules_path}. Required boundary for all worker executions. Run 'sidekick init'.",
             )
         )
 
@@ -329,18 +460,75 @@ def run_doctor(repo_root: Path, config: SidekickConfig | None = None) -> DoctorR
 
     delegation_file = repo_root / ".ai" / "DELEGATION.md"
     if delegation_file.is_file():
-        report.checks.append(CheckItem("governance", "DELEGATION.md", "OK", "Found delegation policy at .ai/DELEGATION.md."))
-    else:
-        report.checks.append(
-            CheckItem(
-                "governance",
-                "DELEGATION.md",
-                "INFO",
-                "Missing .ai/DELEGATION.md. Required if using automatic lead-to-worker delegation.",
+        del_text = delegation_file.read_text(encoding="utf-8")
+        if "confidence" in del_text and "LOCAL" in del_text and "BLOCKED" in del_text:
+            report.checks.append(CheckItem("governance", "DELEGATION.md", "OK", "Found canonical delegation policy."))
+        else:
+            report.checks.append(
+                CheckItem(
+                    "governance",
+                    "DELEGATION.md",
+                    "WARN",
+                    ".ai/DELEGATION.md lacks standard Fail-Closed policy clauses. Run 'sidekick init --force' to update.",
+                )
             )
-        )
+    else:
+        if mode in ("delegation", "all"):
+            report.checks.append(
+                CheckItem(
+                    "governance",
+                    "DELEGATION.md",
+                    "FAIL",
+                    "Missing .ai/DELEGATION.md. Required for automatic lead delegation. Run 'sidekick init'.",
+                )
+            )
+        else:
+            report.checks.append(
+                CheckItem(
+                    "governance",
+                    "DELEGATION.md",
+                    "INFO",
+                    "Missing .ai/DELEGATION.md (only required for automatic lead-to-worker delegation).",
+                )
+            )
 
-    # 3. Ollama Connectivity & Model
+    # 3. Lead Host Integration Checks
+    agents_file = repo_root / "AGENTS.md"
+    claude_file = repo_root / "CLAUDE.md"
+    has_agents = agents_file.is_file() and ".ai/DELEGATION.md" in agents_file.read_text(encoding="utf-8")
+    has_claude = claude_file.is_file() and "@AGENTS.md" in claude_file.read_text(encoding="utf-8")
+
+    if has_agents and has_claude:
+        report.checks.append(
+            CheckItem("lead", "Lead Host Entrypoints", "OK", "AGENTS.md and CLAUDE.md configured and linked to policy.")
+        )
+    elif has_agents or has_claude:
+        found_name = "AGENTS.md" if has_agents else "CLAUDE.md"
+        missing_name = "CLAUDE.md" if has_agents else "AGENTS.md"
+        report.checks.append(
+            CheckItem("lead", "Lead Host Entrypoints", "WARN", f"Found {found_name}, but {missing_name} is missing.")
+        )
+    else:
+        if mode in ("delegation", "all"):
+            report.checks.append(
+                CheckItem(
+                    "lead",
+                    "Lead Host Entrypoints",
+                    "FAIL",
+                    "Missing AGENTS.md and CLAUDE.md. Lead AIs (Claude Code, Codex, Astra) cannot discover delegation policy. Run 'sidekick init'.",
+                )
+            )
+        else:
+            report.checks.append(
+                CheckItem(
+                    "lead",
+                    "Lead Host Entrypoints",
+                    "INFO",
+                    "Lead Host entrypoints not configured (only required for Claude Code / Codex / Astra Lead delegation).",
+                )
+            )
+
+    # 4. Ollama Connectivity & Model Availability
     ollama_url = config.ollama_base_url.rstrip("/")
     tags_url = f"{ollama_url}/api/tags"
     try:
@@ -361,13 +549,14 @@ def run_doctor(repo_root: Path, config: SidekickConfig | None = None) -> DoctorR
                     CheckItem("ollama", "Model Availability", "OK", f"Configured model '{target_model}' is installed.")
                 )
             else:
+                # Missing configured model is a fatal blocker for executing Sidekick!
                 report.checks.append(
                     CheckItem(
                         "ollama",
                         "Model Availability",
-                        "WARN",
+                        "FAIL",
                         f"Configured model '{target_model}' not found in Ollama ({len(installed_models)} models installed). "
-                        f"Run: ollama pull {target_model}",
+                        f"Execution will fail. Install with: ollama pull {target_model}",
                     )
                 )
     except urllib.error.URLError as e:
@@ -384,7 +573,7 @@ def run_doctor(repo_root: Path, config: SidekickConfig | None = None) -> DoctorR
             CheckItem("ollama", "Ollama Connection", "FAIL", f"Unexpected error connecting to Ollama: {e}")
         )
 
-    # 4. Security & Guardrails
+    # 5. Security & Guardrails
     if config.auto_push:
         report.checks.append(
             CheckItem(

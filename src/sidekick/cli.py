@@ -14,13 +14,15 @@ def main():
     subparsers = parser.add_subparsers(dest="command", help="Available subcommands")
 
     # init subcommand
-    init_parser = subparsers.add_parser("init", help="Initialize target repository with .ai/ structure and templates")
+    init_parser = subparsers.add_parser("init", help="Initialize target repository with .ai/ structure, canonical policies, and Lead entrypoints")
     init_parser.add_argument("path", nargs="?", default=".", help="Target repository directory (default: current directory)")
     init_parser.add_argument("--force", action="store_true", help="Overwrite existing template files")
+    init_parser.add_argument("--no-lead", action="store_true", help="Do not create Lead Host entrypoints (AGENTS.md, CLAUDE.md)")
 
     # doctor subcommand
     doc_parser = subparsers.add_parser("doctor", help="Diagnose repository readiness, Ollama connection, and guardrails")
     doc_parser.add_argument("path", nargs="?", default=".", help="Target repository directory (default: current directory)")
+    doc_parser.add_argument("--mode", type=str, choices=["all", "phase1", "phase2", "delegation"], default="all", help="Diagnostic mode (default: all)")
     doc_parser.add_argument("--model", type=str, default=None, help="Ollama model name (overrides config)")
     doc_parser.add_argument("--env-file", type=str, default=None, help="Path to .env configuration file")
 
@@ -43,7 +45,7 @@ def main():
 
     if args.command == "init":
         target = Path(args.path).resolve()
-        res = init_repo(target, force=args.force)
+        res = init_repo(target, force=args.force, include_lead_entrypoints=not getattr(args, "no_lead", False))
         print(f"=== Initialized Local AI Sidekick in {res['repo_root']} ===")
         for f in res["created"]:
             print(f"  [+] Created {f}")
@@ -52,9 +54,9 @@ def main():
         if res["gitignore_updated"]:
             print("  [+] Updated .gitignore with runtime exclusions")
         print("\nNext steps:")
-        print("  1. Run 'sidekick doctor' to verify local environment and Ollama")
-        print("  2. Write your task in .ai/TASK.md (or use templates/TASK.example.md)")
-        print("  3. Run 'sidekick --watch' or 'sidekick --auto-git'")
+        print("  1. Run 'sidekick doctor' to verify local environment readiness")
+        print("  2. If using Claude Code / Codex / Astra, Lead AIs will auto-delegate to Sidekick")
+        print("  3. For manual tasks, write .ai/TASK.md and run 'sidekick --watch' or 'sidekick --auto-git'")
         sys.exit(0)
 
     if args.command == "doctor":
@@ -63,7 +65,7 @@ def main():
         config = SidekickConfig.load(target, env_file)
         if args.model:
             config.model = args.model
-        report = run_doctor(target, config)
+        report = run_doctor(target, config, mode=args.mode)
         print(report.format_text())
         sys.exit(1 if report.has_failures else 0)
 

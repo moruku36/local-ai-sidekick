@@ -51,6 +51,7 @@ Because Local AI Sidekick operates directly on local codebases and performs auto
 
 2. **Shared GitHub Credentials & Identity Separation**:
    - If the worker process shares the same personal access token (PAT) or SSH key as a human developer, the Git hosting platform (e.g. GitHub) cannot distinguish between human actions and autonomous worker actions.
+   - **GitHub Ruleset Boundary Nuance**: While repository branch rulesets (such as `main-guardrails`) enforce Pull Request workflows and CI gate passage, solo-maintainer configurations use `required_approving_review_count: 0`. Under this setting, GitHub enforces PR structure and CI status, but does not cryptographically require a distinct second GitHub account to approve before merge. In team environments or high-assurance workflows, configure non-zero approving reviews with CODEOWNERS or verify human approval via independent signed evidence ledgers (e.g., AI Engineering Factory).
    - **Recommendation**: Deploy separate bot accounts or read-only/branch-scoped deploy keys, and enforce branch rulesets requiring independent human approval.
 
 3. **Host OS Compromise & Sandboxing**:
