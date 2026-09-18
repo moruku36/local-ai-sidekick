@@ -41,7 +41,9 @@ logs/
 temp/
 scratch/
 
-# Sidekick runtime state & lock (prevents leaking task state & run locks)
+# Sidekick runtime task/result/state (templates live under templates/)
+.ai/TASK.md
+.ai/RESULT.md
 .ai/state.json
 .ai/sidekick.lock
 
