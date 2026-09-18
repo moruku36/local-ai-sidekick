@@ -451,7 +451,10 @@ If you cannot safely proceed without violating rules or if design is ambiguous, 
 
             # 12.2 Secret Scan
             print("  -> Performing secret scan on changed files...")
-            s_ok, findings = self.git_manager.run_secret_scan_on_changed(actual_changed)
+            secret_scan_paths = list(actual_changed)
+            if self.config.commit_task_file and self.config.task_path not in secret_scan_paths:
+                secret_scan_paths.append(self.config.task_path)
+            s_ok, findings = self.git_manager.run_secret_scan_on_changed(secret_scan_paths)
             if not s_ok:
                 result_data["status"] = "BLOCKED_SECRET_DETECTED"
                 result_data["errors"] = f"Secrets detected in modified files:\n" + "\n".join(f"  {f}" for f in findings)
@@ -460,8 +463,20 @@ If you cannot safely proceed without violating rules or if design is ambiguous, 
                 self._write_result(result_data)
                 return result_data
 
-            # Write result file prior to commit if configured
+            # Write the final result before an optional explicit RESULT.md commit.
             self._write_result(result_data)
+            if self.config.commit_result_file:
+                r_ok, r_findings = self.git_manager.run_secret_scan_on_changed([self.config.result_path])
+                if not r_ok:
+                    result_data["status"] = "BLOCKED_SECRET_DETECTED"
+                    result_data["errors"] = (
+                        "Secrets detected in RESULT.md:\n"
+                        + "\n".join(f"  {f}" for f in r_findings)
+                    )
+                    result_data["automation_status"] = "BLOCKED_SECRET_DETECTED"
+                    print(f"  ! {result_data['errors']}")
+                    self._write_result(result_data)
+                    return result_data
 
             # 12.3 Safe Commit
             if self.config.auto_commit:
