@@ -1,8 +1,9 @@
 """Ollama client integration for Local AI Sidekick."""
 import json
-import urllib.request
 import urllib.error
-from typing import List, Dict, Any
+import urllib.request
+from typing import Dict, List
+
 
 class OllamaClient:
     def __init__(self, base_url: str = "http://localhost:11434", timeout_seconds: int = 180):

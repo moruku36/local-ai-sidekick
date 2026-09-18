@@ -1,18 +1,18 @@
 """Orchestrator runner for Local AI Sidekick (supporting Phase 1 and Phase 2)."""
 import json
 import re
-import sys
 import time
 from pathlib import Path
-from typing import List, Dict, Any, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from .config import SidekickConfig
-from .security import SecurityPolicy
-from .task_parser import TaskDefinition
-from .ollama_client import OllamaClient
-from .workspace import WorkspaceManager
 from .git_manager import GitAutomationManager
-from .state_manager import SidekickState, LockManager
+from .ollama_client import OllamaClient
+from .security import SecurityPolicy
+from .state_manager import SidekickState
+from .task_parser import TaskDefinition
+from .workspace import WorkspaceManager
+
 
 class SidekickRunner:
     def __init__(self, repo_root: Path, config: Optional[SidekickConfig] = None):
@@ -457,7 +457,7 @@ If you cannot safely proceed without violating rules or if design is ambiguous, 
             s_ok, findings = self.git_manager.run_secret_scan_on_changed(secret_scan_paths)
             if not s_ok:
                 result_data["status"] = "BLOCKED_SECRET_DETECTED"
-                result_data["errors"] = f"Secrets detected in modified files:\n" + "\n".join(f"  {f}" for f in findings)
+                result_data["errors"] = "Secrets detected in modified files:\n" + "\n".join(f"  {f}" for f in findings)
                 result_data["automation_status"] = "BLOCKED_SECRET_DETECTED"
                 print(f"  ! {result_data['errors']}")
                 self._write_result(result_data)
@@ -537,13 +537,13 @@ If you cannot safely proceed without violating rules or if design is ambiguous, 
             self._save_state(task.task_id, result_data)
             self._write_result(result_data)
 
-            print(f"\n=======================================================")
-            print(f"  *** READY_FOR_REVIEW ***")
+            print("\n=======================================================")
+            print("  *** READY_FOR_REVIEW ***")
             print(f"  Task ID : {result_data['task_id']}")
             print(f"  Branch  : {result_data['branch']}")
             print(f"  Commit  : {result_data['commit_hash']}")
-            print(f"  Awaiting Lead AI / Human Review")
-            print(f"=======================================================\n")
+            print("  Awaiting Lead AI / Human Review")
+            print("=======================================================\n")
         else:
             self._write_result(result_data)
             print(f"[12/12] Done. Final status: {result_data['status']}. Awaiting human/Lead AI review.")
