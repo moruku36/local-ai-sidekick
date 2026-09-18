@@ -25,6 +25,7 @@ Communication between Lead AI and Sidekick is file-mediated via local Markdown r
 | Automatic merge | Not supported |
 
 For independent verification and human approval boundaries, see [AI Engineering Factory Integration](docs/factory-integration.md).
+For security model, threat boundaries, and vulnerability reporting, see [Security Policy](SECURITY.md).
 
 ---
 
@@ -215,21 +216,31 @@ Any installed model can also be specified through the environment variable `SIDE
 
 ---
 
-## Installation & Configuration
+## Installation & Quickstart
 
-1. Clone and install the package:
-   ```powershell
+1. Install the package:
+   ```bash
    git clone https://github.com/moruku36/local-ai-sidekick.git
    cd local-ai-sidekick
-   python -m pip install -e .
+   python -m pip install -e ".[dev]"
    ```
 
-2. (Optional) Create local configuration from example:
+2. **Initialize target repository** (sets up `.ai/` governance, rules, decisions, and `.gitignore`):
+   ```bash
+   sidekick init /path/to/repo
+   ```
+
+3. **Diagnose environment readiness** (checks Git repo, Ollama connection, model availability, and guardrails):
+   ```bash
+   sidekick doctor /path/to/repo
+   ```
+
+4. (Optional) Create local configuration from example:
    ```powershell
    Copy-Item config\sidekick.example.env .env
    ```
 
-3. For manual TASK.md workflow, copy the runtime templates. Automatic delegation creates `.ai/TASK.md` atomically, so this is not required for delegated tasks.
+5. For manual TASK.md workflow, copy the runtime templates. Automatic delegation creates `.ai/TASK.md` atomically, so this is not required for delegated tasks.
    ```powershell
    Copy-Item templates\TASK.example.md .ai\TASK.md
    Copy-Item templates\RESULT.example.md .ai\RESULT.md
@@ -301,7 +312,7 @@ The existing PowerShell wrapper remains available for compatibility:
 
 Options:
 - `-RepoRoot <path>`: Target repository directory (default: `.`)
-- `-Model <model_name>`: Model override (e.g., `-Model "qwen2.5-coder:7b"`)
+- `-Model <model_name>`: Model override (e.g., `-Model "qwen2.5:14b"` or lightweight alternative `-Model "qwen2.5-coder:7b"`)
 - `-EnvFile <path>`: Path to custom `.env` file
 
 On Linux / macOS:
@@ -362,11 +373,17 @@ Run the Task Watcher to monitor `.ai/TASK.md` continuously:
 
 ---
 
-## Real Ollama E2E Tests
+## Real Ollama E2E Tests (Dedicated Validation Lane)
 
-The Phase 2 end-to-end tests invoke a **real local Ollama instance** and are intentionally opt-in. Standard GitHub-hosted CI runs the deterministic test suite and skips these two external-runtime tests.
+The Phase 2 end-to-end tests invoke a **real local Ollama instance** and are intentionally opt-in. Standard pull request CI runs the fast, deterministic test suite and skips external-runtime tests.
 
-To run the real E2E suite locally after starting Ollama and installing `qwen2.5:14b`:
+To run the real E2E suite locally using the dedicated helper:
+
+```bash
+python scripts/run-real-e2e.py --model qwen2.5:14b
+```
+
+Alternatively, invoke via environment variable:
 
 ```powershell
 $env:SIDEKICK_RUN_REAL_OLLAMA_E2E = "true"
@@ -379,7 +396,8 @@ On Linux/macOS:
 SIDEKICK_RUN_REAL_OLLAMA_E2E=true python -m unittest tests.test_phase2_e2e -v
 ```
 
-The E2E tests explicitly enable runtime RESULT.md commits because that behavior is now opt-in; production defaults remain fail-closed.
+On GitHub Actions, real Ollama execution is isolated in a separate manual workflow:
+- [Real Ollama E2E (Manual Lane)](.github/workflows/e2e-ollama.yml) — Triggerable via `workflow_dispatch` with custom model selection.
 
 ---
 
@@ -388,6 +406,8 @@ The E2E tests explicitly enable runtime RESULT.md commits because that behavior 
 > [!WARNING]
 > **Local Execution & Untrusted Tasks Warning**:
 > This tool executes code, builds, and test commands locally on your machine via subprocesses. While dangerous commands (`rm -rf`, destructive cloud writes, git hard resets) and undeclared file edits are guarded, command execution still interacts directly with your host environment. **Do not run untrusted or unreviewed tasks from unknown sources.**
+>
+> For full threat boundaries, what is protected vs. out-of-scope, and vulnerability disclosure instructions, see [SECURITY.md](SECURITY.md).
 
 - **Permanent Rules**: Stored in `.ai/RULES.md`.
 - **Allowed Files List & Diff Guard**: Path traversal and access to undeclared files are blocked at execution and before Git commit.
@@ -395,7 +415,7 @@ The E2E tests explicitly enable runtime RESULT.md commits because that behavior 
 - **Destructive Command Blocking**: Commands matching `rm -rf`, `git reset --hard`, `terraform apply`, `aws/az/gcloud` write operations are intercepted and denied.
 - **Secret Redaction & Pre-commit Scanning**: Detects and masks credentials in outputs; blocks commits containing raw secrets.
 - **Git Protection**: Local LLM never executes raw git commands; all git operations are performed by hardened Python manager. Push to `main` is blocked.
-- **Runtime Task Data**: `.ai/TASK.md` / `.ai/RESULT.md` are ignored runtime files; versioned examples live under `templates/`. Sidekick does not commit them by default. Versioned examples live under `templates/`.
+- **Runtime Task Data**: `.ai/TASK.md` / `.ai/RESULT.md` are ignored runtime files; versioned examples live under `templates/`. Sidekick does not commit them by default.
 - **Task Data Isolation Recommendation**: This repository provides the sidekick framework. For actual proprietary projects, configure the sidekick in your target project repository rather than committing sensitive operational task/result data.
 - **Independent Verification**: For stronger evidence, phase contracts, and merge approval boundaries, use the [AI Engineering Factory integration path](docs/factory-integration.md).
 

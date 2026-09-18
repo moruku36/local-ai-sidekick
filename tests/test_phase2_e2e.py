@@ -1,14 +1,15 @@
 import os
-import unittest
-import tempfile
 import shutil
 import subprocess
+import tempfile
+import unittest
 from pathlib import Path
+
 from sidekick.config import SidekickConfig
-from sidekick.runner import SidekickRunner
-from sidekick.watcher import TaskWatcher
-from sidekick.state_manager import SidekickState
 from sidekick.delegate import submit
+from sidekick.state_manager import SidekickState
+from sidekick.watcher import TaskWatcher
+
 
 @unittest.skipUnless(
     os.environ.get("SIDEKICK_RUN_REAL_OLLAMA_E2E", "").lower() in {"1", "true", "yes"},

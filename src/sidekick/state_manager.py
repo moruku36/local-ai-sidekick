@@ -1,11 +1,12 @@
 """State and lock management for Phase 2 Watcher and Runner."""
 import json
 import os
-import time
-from dataclasses import dataclass, asdict, field
 import tempfile
+import time
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Dict
+
 
 @dataclass
 class SidekickState:

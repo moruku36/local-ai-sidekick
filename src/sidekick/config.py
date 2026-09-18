@@ -3,6 +3,7 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+
 @dataclass
 class SidekickConfig:
     ollama_base_url: str

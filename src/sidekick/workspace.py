@@ -1,9 +1,10 @@
 """Execution workspace and operations runner."""
 import subprocess
-import shutil
 from pathlib import Path
-from typing import List, Tuple, Dict
+from typing import Tuple
+
 from .security import SecurityPolicy
+
 
 class WorkspaceManager:
     def __init__(self, repo_root: Path, security_policy: SecurityPolicy):

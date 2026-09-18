@@ -2,9 +2,10 @@
 import re
 import subprocess
 from pathlib import Path
-from typing import List, Tuple, Optional
-from .security import SecurityPolicy
+from typing import List, Optional, Tuple
+
 from .secret_scanner import SecretScanner
+
 
 class GitAutomationManager:
     def __init__(self, repo_root: Path):
@@ -75,7 +76,7 @@ class GitAutomationManager:
                         dirty_violations.append(p)
 
                 if dirty_violations:
-                    return False, f"Working tree is dirty. Stash or commit existing changes before starting Phase 2:\n" + "\n".join(dirty_violations[:10])
+                    return False, "Working tree is dirty. Stash or commit existing changes before starting Phase 2:\n" + "\n".join(dirty_violations[:10])
 
         return True, "Preflight check passed."
 

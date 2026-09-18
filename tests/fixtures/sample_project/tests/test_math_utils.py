@@ -1,5 +1,8 @@
 import unittest
+
 from src.math_utils import factorial
+
+
 class TestMathUtils(unittest.TestCase):
     def test_factorial_zero(self):
         self.assertEqual(factorial(0), 1)
