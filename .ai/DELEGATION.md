@@ -42,14 +42,14 @@ For LOCAL require `risk: low`, `ambiguous: false`, and
    Forbidden Operations is optional: helper always includes mandatory prohibitions.
 3. Write assessment JSON to a temporary path **outside the target repository**
    (UTF-8, not versioned). Never persist credentials, including in the assessment.
-4. Run from the Sidekick installation repository:
+4. Install the Sidekick package once (`python -m pip install -e .`) and run:
 
    ```powershell
-   $env:PYTHONPATH = "$PWD\src"
-   python -m sidekick.delegate --repo-root <target-repository> --request <assessment.json>
+   sidekick-delegate --repo-root <target-repository> --request <assessment.json>
    ```
 
-   `--dry-run` validates without publishing. LOCAL with `status: QUEUED` means the
+   `--dry-run` validates without publishing. The module form
+   `python -m sidekick.delegate ...` remains equivalent when `src/` is on `PYTHONPATH`. LOCAL with `status: QUEUED` means the
    atomic handoff succeeded. ALREADY_QUEUED/ALREADY_HANDLED means stop submitting.
    BLOCKED returns exit code 2; resolve the reason before retrying. Never bypass
    helper validation by writing TASK.md directly for automatically delegated work.
