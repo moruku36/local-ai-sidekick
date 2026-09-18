@@ -470,12 +470,20 @@ If you cannot safely proceed without violating rules or if design is ambiguous, 
                 result_data["push_status"] = "PENDING" if self.config.auto_push else "NONE"
                 self._write_result(result_data)
 
+                runtime_excluded = {".ai/state.json", ".ai/sidekick.lock"}
+                if not self.config.commit_task_file:
+                    runtime_excluded.add(self.config.task_path.replace("\\", "/"))
+                if not self.config.commit_result_file:
+                    runtime_excluded.add(self.config.result_path.replace("\\", "/"))
+
                 commit_files = [
                     f for f in actual_changed
-                    if f.replace("\\", "/") not in [".ai/state.json", ".ai/sidekick.lock"]
+                    if f.replace("\\", "/") not in runtime_excluded
                     and "__pycache__" not in f
                     and not f.endswith((".pyc", ".pyo"))
                 ]
+                if self.config.commit_task_file and self.config.task_path not in commit_files:
+                    commit_files.append(self.config.task_path)
                 if self.config.commit_result_file and self.config.result_path not in commit_files:
                     commit_files.append(self.config.result_path)
 
