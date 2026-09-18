@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "local-ai-sidekick"
+version = "0.2.0"
+description = "Local Ollama coding worker with bounded delegation, safe Git automation, and human review."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+  { name = "Local AI Sidekick Contributors" }
+]
+dependencies = []
+
+[project.scripts]
+sidekick = "sidekick.cli:main"
+sidekick-delegate = "sidekick.delegate:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-dir]
+"" = "src"
