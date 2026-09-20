@@ -1,0 +1,47 @@
+name: Real Ollama E2E (Manual Lane)
+
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: "Ollama model to validate against"
+        required: false
+        default: "qwen2.5:14b"
+
+jobs:
+  real-ollama-e2e:
+    name: Real Ollama E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install package
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Install and launch Ollama
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          ollama serve > /dev/null 2>&1 &
+          sleep 5
+          curl -s http://localhost:11434/api/tags
+
+      - name: Pull Model
+        run: |
+          MODEL_NAME="${{ github.event.inputs.model || 'qwen2.5:14b' }}"
+          echo "Pulling $MODEL_NAME..."
+          ollama pull "$MODEL_NAME"
+
+      - name: Execute Real Ollama E2E Suite
+        run: |
+          MODEL_NAME="${{ github.event.inputs.model || 'qwen2.5:14b' }}"
+          python scripts/run-real-e2e.py --model "$MODEL_NAME"

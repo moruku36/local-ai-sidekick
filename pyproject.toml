@@ -14,6 +14,11 @@ authors = [
 ]
 dependencies = []
 
+[project.optional-dependencies]
+dev = [
+  "ruff>=0.4.0",
+]
+
 [project.scripts]
 sidekick = "sidekick.cli:main"
 sidekick-delegate = "sidekick.delegate:main"
@@ -23,3 +28,24 @@ where = ["src"]
 
 [tool.setuptools.package-dir]
 "" = "src"
+
+[tool.setuptools.package-data]
+sidekick = ["templates/*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+  "E",   # pycodestyle errors
+  "W",   # pycodestyle warnings
+  "F",   # pyflakes
+  "I",   # isort
+]
+ignore = [
+  "E501", # line length handled by formatter
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["sidekick"]

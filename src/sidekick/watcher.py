@@ -8,8 +8,9 @@ from typing import Optional
 
 from .config import SidekickConfig
 from .runner import SidekickRunner
+from .state_manager import LockManager, SidekickState
 from .task_parser import TaskDefinition
-from .state_manager import SidekickState, LockManager
+
 
 class TaskWatcher:
     def __init__(self, repo_root: Path, config: Optional[SidekickConfig] = None):
@@ -97,12 +98,12 @@ class TaskWatcher:
 
     def start_loop(self) -> None:
         """Runs the continuous watching loop."""
-        print(f"==================================================")
-        print(f"Local AI Sidekick (Phase 2 Task Watcher)")
+        print("==================================================")
+        print("Local AI Sidekick (Phase 2 Task Watcher)")
         print(f"Watching: {self.task_file}")
         print(f"Poll Interval: {self.config.watch_interval}s")
-        print(f"Press Ctrl+C to stop.")
-        print(f"==================================================")
+        print("Press Ctrl+C to stop.")
+        print("==================================================")
 
         try:
             while True:

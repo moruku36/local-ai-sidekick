@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List
 
+
 @dataclass
 class TaskDefinition:
     task_id: str = ""

@@ -1,12 +1,13 @@
-import unittest
-import tempfile
-import shutil
 import os
+import tempfile
+import unittest
 from pathlib import Path
 from unittest.mock import patch
-from sidekick.task_parser import TaskDefinition
-from sidekick.security import SecurityPolicy
+
 from sidekick.config import SidekickConfig
+from sidekick.security import SecurityPolicy
+from sidekick.task_parser import TaskDefinition
+
 
 class TestTaskParser(unittest.TestCase):
     def test_parse_task(self):

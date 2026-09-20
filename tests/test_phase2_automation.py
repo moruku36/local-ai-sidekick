@@ -1,13 +1,14 @@
-import unittest
-import tempfile
 import shutil
 import subprocess
+import tempfile
+import unittest
 from pathlib import Path
-from sidekick.task_parser import TaskDefinition
-from sidekick.security import SecurityPolicy
-from sidekick.secret_scanner import SecretScanner
+
 from sidekick.git_manager import GitAutomationManager
-from sidekick.state_manager import SidekickState, LockManager
+from sidekick.secret_scanner import SecretScanner
+from sidekick.state_manager import LockManager, SidekickState
+from sidekick.task_parser import TaskDefinition
+
 
 class TestTaskParserPhase2(unittest.TestCase):
     def test_parse_task_with_id(self):
