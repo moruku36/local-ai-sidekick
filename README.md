@@ -1,36 +1,36 @@
 # Local AI Sidekick
 
-> Local AI coding worker using Ollama, bounded Lead/Worker delegation, safe Git automation, and human review.
+> Ollama を使ってローカルで動作する AI コーディング Worker。Lead/Worker の委譲範囲を明確にし、安全な Git 自動化と人間によるレビューを組み合わせます。
 
 [![CI](https://github.com/moruku36/local-ai-sidekick/actions/workflows/ci.yml/badge.svg)](https://github.com/moruku36/local-ai-sidekick/actions/workflows/ci.yml)
 
-## Purpose
+## 目的
 
-To significantly reduce expensive frontier AI token consumption by establishing a clear division of labor:
+高価なフロンティア AI のトークン消費を大幅に抑えるため、役割分担を明確にします。
 
-- **Lead AI**: Architecture design, strategic decisions, task scoping, and final code reviews.
-- **Local Sidekick**: Local repository exploration, implementation, testing, self-fixing, and structured result generation.
+- **Lead AI**: アーキテクチャ設計、戦略的判断、タスク範囲の決定、最終コードレビューを担当します。
+- **Local Sidekick**: ローカルリポジトリの調査、実装、テスト、自己修正、構造化された結果の生成を担当します。
 
-Communication between Lead AI and Sidekick is file-mediated via local Markdown runtime files (`.ai/TASK.md` and `.ai/RESULT.md`). These runtime files are no longer tracked by the framework repository; reusable examples live under `templates/`.
+Lead AI と Sidekick の通信は、ローカル Markdown ランタイムファイル（`.ai/TASK.md` と `.ai/RESULT.md`）を介して行います。これらのランタイムファイルはフレームワークリポジトリでは追跡せず、再利用可能な例は `templates/` 配下に置いています。
 
-### Current scope
+### 現在の対応範囲
 
-| Capability | Status |
+| 機能 | 状態 |
 | --- | --- |
-| Phase 1 manual local worker | Implemented |
-| Phase 2 safe branch / commit automation | Implemented |
-| Automatic LOCAL / LEAD / BLOCKED delegation | Implemented |
-| Claude Code Lead integration | Implemented |
-| Global Codex/Claude SessionStart bootstrap (`sidekick integrate`) | Implemented |
-| Automatic push | **Opt-in only; default OFF** |
-| Automatic merge | Not supported |
+| Phase 1 手動ローカル Worker | 実装済み |
+| Phase 2 安全なブランチ / コミット自動化 | 実装済み |
+| LOCAL / LEAD / BLOCKED の自動委譲 | 実装済み |
+| Claude Code Lead 連携 | 実装済み |
+| Codex / Claude のグローバル SessionStart ブートストラップ（`sidekick integrate`） | 実装済み |
+| 自動 push | **オプトインのみ。既定値は OFF** |
+| 自動 merge | 非対応 |
 
-For independent verification and human approval boundaries, see [AI Engineering Factory Integration](docs/factory-integration.md).
-For security model, threat boundaries, and vulnerability reporting, see [Security Policy](SECURITY.md).
+独立検証と人間による承認境界については [AI Engineering Factory 連携](docs/factory-integration.md) を参照してください。  
+セキュリティモデル、脅威境界、脆弱性報告については [Security Policy](SECURITY.md) を参照してください。
 
 ---
 
-## Automatic Delegation
+## 自動委譲
 
 ```text
 User -> Lead Host (Codex/Astra-compatible, Claude Code, ...) -> Delegation Policy -> LOCAL / LEAD / BLOCKED
@@ -42,30 +42,20 @@ TASK.md -> Existing Watcher -> Local Sidekick -> RESULT.md -> Lead Review
                                   ai/<task-id> -> READY_FOR_REVIEW
 ```
 
-[AGENTS.md](AGENTS.md) instructs the Lead to apply
-[.ai/DELEGATION.md](.ai/DELEGATION.md) before each ordinary user request.
-The Lead classifies semantically; the standard-library helper validates the
-assessment and publishes TASK.md atomically. This is an instruction-driven
-delegation layer, not an independent natural-language classifier or a new daemon.
-`.ai/DELEGATION.md` is the single source of truth for this policy regardless of
-Lead Host: [CLAUDE.md](CLAUDE.md) imports it (and AGENTS.md/RULES.md) for
-Claude Code rather than duplicating it. See
-[Supported Lead Hosts](#supported-lead-hosts) below. For Astra/Antigravity or
-other hosts that do not load AGENTS.md, attach it and the policy to workspace
-instructions once; host-specific auto-loading beyond Claude Code is not
-verified here.
+[AGENTS.md](AGENTS.md) は、通常のユーザー要求を処理する前に Lead が
+[.ai/DELEGATION.md](.ai/DELEGATION.md) を適用するよう指示します。
 
-- **LOCAL**: bounded exploration, small/medium implementation, refactoring,
-  tests, fixes, formatting, lint, README/docs/config, and repetitive edits.
-- **LEAD**: design, security/IAM, cloud/destructive/deployment decisions, final
-  review and Worker BLOCKED recovery.
-- **BLOCKED**: ambiguous requirements, unknown file scope, missing acceptance
-  criteria, low confidence or unsafe task data. No TASK is written.
+Lead は要求内容を意味的に分類し、標準ライブラリのみで実装された helper がその判定を検証して、TASK.md をアトミックに発行します。これは命令ベースの委譲レイヤーであり、独立した自然言語分類器や新しい daemon を追加するものではありません。
 
-Prepare JSON following [the example](docs/delegation-request.example.json),
-stored outside the target repository so it cannot enter a Worker commit.
-Use concrete file paths, single-line fields, and commands from `SAFE_COMMANDS`
-in `src/sidekick/delegate.py`. Arbitrary shell/interpreter commands are rejected.
+`.ai/DELEGATION.md` は Lead Host に依存しない、このポリシーの唯一の正本です。[CLAUDE.md](CLAUDE.md) は Claude Code 向けにポリシーを複製せず、このファイルと AGENTS.md / RULES.md を import します。詳細は下の [対応 Lead Host](#対応-lead-host) を参照してください。
+
+Astra / Antigravity など AGENTS.md を自動読込しない Host では、AGENTS.md とポリシーを workspace instruction に一度登録してください。Claude Code 以外の Host 固有の自動読込については、このリポジトリでは検証していません。
+
+- **LOCAL**: 範囲が限定された調査、小〜中規模の実装、リファクタリング、テスト、修正、format、lint、README / docs / config、反復的な編集。
+- **LEAD**: 設計、Security / IAM、クラウド・破壊的操作・deployment に関する判断、最終レビュー、Worker が BLOCKED になった場合の復旧。
+- **BLOCKED**: 要件が曖昧、対象ファイル範囲が不明、受け入れ条件がない、信頼度が低い、または安全でないタスクデータを含む場合。TASK は作成しません。
+
+[例](docs/delegation-request.example.json) に従って JSON を用意し、Worker の commit に混入しないよう対象リポジトリの外に保存します。具体的なファイルパス、単一行フィールド、および `src/sidekick/delegate.py` の `SAFE_COMMANDS` に含まれるコマンドを使用してください。任意の shell / interpreter コマンドは拒否されます。
 
 ```powershell
 # After installing this repository with pip install -e .
@@ -75,29 +65,22 @@ sidekick-delegate --repo-root <target-repository> --request <assessment.json>
 .\scripts\watch-sidekick.ps1 -RepoRoot <target-repository>
 ```
 
-On macOS/Linux use `sidekick-delegate ...` and `sidekick --repo-root <target-repository> --watch`.
-Existing Phase 2/Ollama setup, RULES.md and decisions are still required in the
-target repository. The helper does not start the Watcher or alter push settings.
+macOS / Linux では `sidekick-delegate ...` と `sidekick --repo-root <target-repository> --watch` を使用します。
 
-Disable new automatic delegation with `$env:SIDEKICK_DELEGATION_ENABLED = "false"`
-(POSIX: `export SIDEKICK_DELEGATION_ENABLED=false`). Stop the Watcher with Ctrl+C
-to stop consuming already queued tasks; disabling delegation does not cancel them.
+対象リポジトリには、既存の Phase 2 / Ollama セットアップ、RULES.md、各種 decision が引き続き必要です。helper は Watcher を起動せず、push 設定も変更しません。
 
-**Troubleshooting:** QUEUED means submitted, not completed. If nothing runs,
-check the Watcher terminal, target path, Ollama/model availability and Git preflight.
-ALREADY_QUEUED/ALREADY_HANDLED is intentional deduplication. Review RESULT.md and
-state.json; use `--after-review` only after reviewing the previous terminal result.
-A corrected retry needs a new explicit task_id. BLOCKED/FAILED and interrupted
-runs do not restart on polling. Inspect a stale lock's owner and stop any live
-Worker before removing it; age alone is insufficient. Repair corrupt state from
-a trusted copy rather than deleting history. Delegation currently requires the
-default `.ai/TASK.md` path, even though the legacy CLI supports custom paths.
+新しい自動委譲を無効化するには `$env:SIDEKICK_DELEGATION_ENABLED = "false"`
+（POSIX: `export SIDEKICK_DELEGATION_ENABLED=false`）を設定します。すでに queue 済みのタスク消費を止めるには Ctrl+C で Watcher を停止してください。委譲を無効化しても queue 済みタスクはキャンセルされません。
 
-## Global Integration (optional)
+**トラブルシューティング:** `QUEUED` は「送信済み」であり「完了」ではありません。何も実行されない場合は、Watcher の terminal、対象 path、Ollama / model の利用可否、Git preflight を確認してください。`ALREADY_QUEUED` / `ALREADY_HANDLED` は意図した重複排除です。
 
-Run this **once** to make Codex and Claude Code pick up delegation
-automatically in *any* Git repository, without saying "use Sidekick" or
-"check LOCAL/LEAD" each time:
+`RESULT.md` と `state.json` を確認し、直前の終了結果をレビューした後にだけ `--after-review` を使用してください。修正版を再実行する場合は新しい `task_id` が必要です。`BLOCKED` / `FAILED` および中断された実行は polling で自動再開されません。
+
+古い lock を削除する前に owner を確認し、生存している Worker がある場合は停止してください。経過時間だけを理由に lock を奪ってはいけません。破損した state は履歴を削除するのではなく、信頼できる copy から修復してください。従来 CLI は custom path に対応していますが、自動委譲では現在、既定の `.ai/TASK.md` path が必須です。
+
+## グローバル連携（任意）
+
+Codex と Claude Code が、毎回「Sidekick を使って」「LOCAL/LEAD を確認して」と指示しなくても、**任意の Git リポジトリで自動的に委譲を認識する**ようにするには、次を **1 回だけ**実行します。
 
 ```bash
 pip install -e ".[dev]"
@@ -105,7 +88,7 @@ sidekick integrate --global --host all
 sidekick integrate --status
 ```
 
-After that:
+以降は次だけで開始できます。
 
 ```bash
 cd ~/projects/foo
@@ -115,28 +98,16 @@ cd ~/projects/foo
 claude
 ```
 
-is all a user ever has to type.
+ユーザーが毎回入力する必要があるのはこれだけです。
 
-**What this installs.** `sidekick integrate` adds a small SessionStart
-integration to your global config, keyed to a lightweight `ai-dev-bootstrap`
-entrypoint (also runnable directly: `ai-dev-bootstrap` or
-`python -m sidekick.bootstrap`):
+**インストールされる内容。** `sidekick integrate` はグローバル設定に小さな SessionStart 連携を追加し、軽量な `ai-dev-bootstrap` entrypoint を呼び出します（`ai-dev-bootstrap` または `python -m sidekick.bootstrap` で直接実行することもできます）。
 
-- **Claude Code**: a `SessionStart` hook entry in `~/.claude/settings.json`
-  that runs `ai-dev-bootstrap --json` and injects its output as
-  `additionalContext`.
-- **Codex**: a marked instruction block appended to `~/.codex/AGENTS.md`
-  telling Codex to run `ai-dev-bootstrap` at session start and follow
-  `.ai/DELEGATION.md` in the current repository when present. (Codex's own
-  hook schema is new and still changing; the documented, stable global
-  `AGENTS.md` file is used instead of guessing at it.)
+- **Claude Code**: `~/.claude/settings.json` に `SessionStart` hook を追加し、`ai-dev-bootstrap --json` を実行して、その出力を `additionalContext` として注入します。
+- **Codex**: `~/.codex/AGENTS.md` に識別可能な instruction block を追記し、session 開始時に `ai-dev-bootstrap` を実行して、現在のリポジトリに `.ai/DELEGATION.md` が存在する場合はそれに従うよう指示します。Codex の hook schema は新しく変更も続いているため、推測で hook を利用せず、文書化された安定したグローバル `AGENTS.md` を使用します。
 
-`ai-dev-bootstrap` only inspects local state: `cwd`, whether it's a Git
-repository, whether `.ai/DELEGATION.md`/`.ai/RULES.md` exist, whether a
-Worker lock is held, and whether AI Engineering Factory looks present. It
-never runs tests, Ollama inference, Factory verification, `git fetch`/`pull`,
-or any other network call, and it never writes to the repository — it just
-prints a short (bounded, secret-free) Development Context block like:
+`ai-dev-bootstrap` が確認するのはローカル状態だけです。`cwd`、Git リポジトリかどうか、`.ai/DELEGATION.md` / `.ai/RULES.md` の有無、Worker lock の保持状態、AI Engineering Factory が存在するように見えるかを確認します。
+
+テスト、Ollama inference、Factory 検証、`git fetch` / `pull`、その他の network call は実行しません。またリポジトリにも書き込みません。短く、上限付きで、secret を含まない Development Context block を出力するだけです。
 
 ```text
 AI DEVELOPMENT ENVIRONMENT
@@ -147,39 +118,22 @@ NOT_INITIALIZED
 ...
 ```
 
-**What happens with that context.** The Lead Host still applies
-`.ai/DELEGATION.md` exactly as before (see "Automatic Delegation" above):
-LOCAL work is handed to the Worker via `sidekick-delegate`, LEAD work stays
-with the Lead Host, and BLOCKED work stops for a human decision. If the
-repository has no `.ai/` yet, the Lead only runs the non-destructive
-`sidekick init .` right before the *first* LOCAL delegation — never
-speculatively at session start, and never with `--force`. Running the
-Watcher is still a separate, explicit step (see "Troubleshooting" above);
-`ai-dev-bootstrap` does not start, stop, or manage it.
+**この context を受け取った後の動作。** Lead Host は従来どおり `.ai/DELEGATION.md` を適用します（上の「自動委譲」を参照）。LOCAL の作業は `sidekick-delegate` 経由で Worker に渡し、LEAD の作業は Lead Host が保持し、BLOCKED の作業は人間の判断を待って停止します。
 
-**AI Engineering Factory** is only ever *detected* (`AVAILABLE` /
-`CONFIGURED` / `UNAVAILABLE` in the context above), never invoked
-automatically. See [factory-integration.md](docs/factory-integration.md) for
-when to actually run it.
+対象リポジトリにまだ `.ai/` がない場合、Lead は **最初の LOCAL 委譲の直前にだけ**、非破壊の `sidekick init .` を実行します。session 開始時に先回りして実行せず、`--force` も使用しません。
 
-**Safety and idempotency.** Installing is merge-based and safe to re-run any
-number of times:
+Watcher の起動は引き続き別の明示的な操作です（上の「トラブルシューティング」を参照）。`ai-dev-bootstrap` が Watcher を起動・停止・管理することはありません。
 
-- Your existing `~/.claude/settings.json` hooks and `~/.codex/AGENTS.md`
-  content are preserved untouched; only our own marked entry is added or
-  updated.
-- Running the same install command 10 times in a row produces the same
-  final state — no duplicate hooks, no duplicate blocks.
-- A malformed existing `settings.json` is backed up
-  (`settings.json.bak-<timestamp>`) before it is repaired, never silently
-  discarded.
-- If Sidekick, Factory, Ollama, or Git are missing or misconfigured,
-  `ai-dev-bootstrap` reports `UNAVAILABLE`/`NOT_INITIALIZED`/`DEGRADED` in
-  its context instead of failing; it never breaks the ability to start
-  Codex or Claude Code itself, and it never weakens `.ai/RULES.md` or the
-  Fail-Closed BLOCKED path.
+**AI Engineering Factory** は context 上で `AVAILABLE` / `CONFIGURED` / `UNAVAILABLE` として **検出されるだけ**で、自動実行されません。実際に実行するタイミングは [factory-integration.md](docs/factory-integration.md) を参照してください。
 
-**Other commands:**
+**安全性と冪等性。** インストールは既存設定へ merge する方式で、何度実行しても安全です。
+
+- 既存の `~/.claude/settings.json` の hook と `~/.codex/AGENTS.md` の内容はそのまま保持し、Sidekick 自身の識別済み entry だけを追加または更新します。
+- 同じ install command を 10 回連続で実行しても最終状態は同じです。hook や block が重複しません。
+- 既存の `settings.json` が壊れている場合は、修復前に `settings.json.bak-<timestamp>` として backup し、黙って破棄しません。
+- Sidekick、Factory、Ollama、Git が存在しない、または設定不備でも、`ai-dev-bootstrap` は context 上で `UNAVAILABLE` / `NOT_INITIALIZED` / `DEGRADED` と報告するだけです。Codex や Claude Code 自体の起動を妨げず、`.ai/RULES.md` や Fail-Closed の BLOCKED 経路を弱めません。
+
+**その他のコマンド:**
 
 ```bash
 sidekick integrate --global --host codex           # Codex only
@@ -189,48 +143,29 @@ sidekick integrate --status                        # show current install state
 sidekick integrate --remove --host all             # uninstall (only our own entries)
 ```
 
-**Disable/uninstall:** `sidekick integrate --remove --host all` removes the
-SessionStart hook and the marked `AGENTS.md` block and leaves everything
-else in your global config untouched. To disable delegation itself without
-touching global config, use `SIDEKICK_DELEGATION_ENABLED=false` as above.
+**無効化 / uninstall:** `sidekick integrate --remove --host all` は SessionStart hook と識別済み `AGENTS.md` block だけを削除し、その他のグローバル設定には触れません。グローバル設定を変更せず委譲だけ無効化したい場合は、前述の `SIDEKICK_DELEGATION_ENABLED=false` を使用します。
 
-**Troubleshooting:** if a session doesn't seem to pick up the context, run
-`sidekick integrate --status` to confirm installation, then run
-`ai-dev-bootstrap` directly in the target repository to see its raw output.
-On Windows, the hook command is generated with `sys.executable`, so it works
-from PowerShell, `cmd.exe`, and WSL2 without extra PATH configuration; paths
-containing spaces are quoted automatically.
+**トラブルシューティング:** session が context を取得していないように見える場合は、`sidekick integrate --status` で install 状態を確認し、対象リポジトリ内で `ai-dev-bootstrap` を直接実行して raw output を確認してください。
 
-## Supported Lead Hosts
+Windows では hook command を `sys.executable` から生成するため、追加の PATH 設定なしで PowerShell、`cmd.exe`、WSL2 から動作します。空白を含む path は自動的に quote されます。
 
-`AGENTS.md` and `.ai/DELEGATION.md` are host-agnostic; the following Lead
-Hosts are supported today, and both delegate LOCAL work to the same
-`sidekick.delegate` helper, the same Watcher, and the same Ollama Worker:
+## 対応 Lead Host
 
-- **Codex / Astra-compatible host**: loads `AGENTS.md` directly, or has it
-  attached to workspace/system instructions once if it does not auto-load
-  the file (see the note above).
-- **[Claude Code](https://claude.com/claude-code)**: loads `AGENTS.md`,
-  `.ai/DELEGATION.md` and `.ai/RULES.md` automatically through the
-  `@import`s in [CLAUDE.md](CLAUDE.md) at the repository root.
+`AGENTS.md` と `.ai/DELEGATION.md` は Host 非依存です。現在、次の Lead Host に対応しており、どちらも LOCAL の作業を同じ `sidekick.delegate` helper、Watcher、Ollama Worker へ委譲します。
 
-No Worker code path is specific to either host.
+- **Codex / Astra-compatible host**: `AGENTS.md` を直接読み込みます。自動読込しない場合は workspace / system instruction に一度登録してください。
+- **[Claude Code](https://claude.com/claude-code)**: リポジトリ root の [CLAUDE.md](CLAUDE.md) にある `@import` を通じて、`AGENTS.md`、`.ai/DELEGATION.md`、`.ai/RULES.md` を自動読込します。
 
-### Claude Code setup
+Worker の実装経路は、どちらの Host にも依存しません。
 
-1. Open this repository as the project root in Claude Code (run `claude`
-   from this directory, or open the folder in the Claude desktop app).
-2. Claude Code automatically loads `CLAUDE.md`, which imports `AGENTS.md`,
-   `.ai/DELEGATION.md` and `.ai/RULES.md`. No extra configuration is needed.
-3. Verify the imports loaded by running `/memory` inside Claude Code; it
-   lists every file contributing to the active project instructions,
-   including the three imported files above.
-4. Give Claude Code an ordinary task. It applies the same LOCAL/LEAD/BLOCKED
-   policy as any other Lead Host and, for LOCAL work, runs
-   `sidekick.delegate` exactly as documented in
-   [Automatic Delegation](#automatic-delegation).
+### Claude Code のセットアップ
 
-## Existing Worker Architecture
+1. Claude Code でこのリポジトリを project root として開きます（この directory で `claude` を実行するか、Claude desktop app で folder を開きます）。
+2. Claude Code が `CLAUDE.md` を自動で読み込み、そこから `AGENTS.md`、`.ai/DELEGATION.md`、`.ai/RULES.md` を import します。追加設定は不要です。
+3. Claude Code 内で `/memory` を実行し、import が読み込まれていることを確認します。active project instruction に使われているすべての file が一覧表示され、上記 3 file も確認できます。
+4. Claude Code に通常の task を与えます。他の Lead Host と同じ LOCAL / LEAD / BLOCKED policy を適用し、LOCAL の作業では [自動委譲](#自動委譲) の記載どおり `sidekick.delegate` を実行します。
+
+## 既存 Worker アーキテクチャ
 
 ![Local AI Sidekick Technical Architecture](docs/images/architecture.jpg)
 
@@ -278,101 +213,107 @@ Local Sidekick (Ollama Runner)
         └── RESULT.md & git diff generation
 ```
 
-See [docs/architecture.md](docs/architecture.md) for detailed technical specifications.
+詳細な技術仕様は [docs/architecture.md](docs/architecture.md) を参照してください。
 
 ---
 
-## Requirements
+## 動作要件
 
-- **OS**: Windows 10/11, macOS, or Linux
-- **Python**: 3.10+ (Standard library only; no external pip dependencies required)
-- **PowerShell**: 7+ (or Windows PowerShell) / Bash
+- **OS**: Windows 10/11、macOS、Linux
+- **Python**: 3.10+（標準ライブラリのみ。外部 pip dependency は不要）
+- **PowerShell**: 7+（または Windows PowerShell）/ Bash
 - **Git**: 2.30+
-- **Ollama**: Installed and running at `http://localhost:11434`
+- **Ollama**: install 済みで `http://localhost:11434` で起動していること
 
 ---
 
-## Ollama & Model Setup
+## Ollama とモデルのセットアップ
 
-Ensure Ollama is running:
+Ollama が起動していることを確認します。
 
 ```powershell
 ollama list
 ```
 
-Install the standard model (`qwen2.5:14b`):
+標準モデル（`qwen2.5:14b`）を install します。
 
 ```powershell
 ollama pull qwen2.5:14b
 ```
 
-### GPU Offload Layer Limit (Video Playback & Desktop Safety)
+### GPU Offload Layer 上限（動画再生・デスクトップ操作との共存）
 
-To prevent Ollama from 100% monopolizing VRAM (allowing concurrent video playback, window manager fluidness, or other GPU workloads), a `Modelfile` is provided:
+Ollama が VRAM を 100% 占有するのを防ぎ、動画再生、window manager、その他の GPU workload と共存できるように `Modelfile` を用意しています。
 
 ```dockerfile
 FROM qwen2.5:14b
 PARAMETER num_gpu 25
 ```
 
-Apply this layer limit:
+layer 上限を適用します。
 
 ```powershell
 ollama create qwen2.5:14b -f Modelfile
 ```
 
-Any installed model can also be specified through the environment variable `SIDEKICK_MODEL` or via the CLI flag `--model`.
+install 済みの任意モデルは、環境変数 `SIDEKICK_MODEL` または CLI flag `--model` で指定できます。
 
 ---
 
-## Installation & Quickstart
+## インストールとクイックスタート
 
-1. Install the package:
+1. package を install します。
+
    ```bash
    git clone https://github.com/moruku36/local-ai-sidekick.git
    cd local-ai-sidekick
    python -m pip install -e ".[dev]"
    ```
 
-2. **Initialize target repository** (sets up `.ai/` governance, rules, decisions, and `.gitignore`):
+2. **対象リポジトリを初期化**します（`.ai/` governance、rules、decisions、`.gitignore` を作成）。
+
    ```bash
    sidekick init /path/to/repo
    ```
 
-3. **Diagnose environment readiness** (checks Git repo, Ollama connection, model availability, and guardrails):
+3. **環境の readiness を診断**します（Git repo、Ollama 接続、model 利用可否、guardrail を確認）。
+
    ```bash
    sidekick doctor /path/to/repo
    ```
 
-4. (Optional) Create local configuration from example:
+4. （任意）example から local configuration を作成します。
+
    ```powershell
    Copy-Item config\sidekick.example.env .env
    ```
 
-5. For manual TASK.md workflow, copy the runtime templates. Automatic delegation creates `.ai/TASK.md` atomically, so this is not required for delegated tasks.
+5. 手動 TASK.md workflow を使う場合は runtime template を copy します。自動委譲では `.ai/TASK.md` がアトミックに作成されるため、委譲 task では不要です。
+
    ```powershell
    Copy-Item templates\TASK.example.md .ai\TASK.md
    Copy-Item templates\RESULT.example.md .ai\RESULT.md
    ```
 
-   `.ai/TASK.md` and `.ai/RESULT.md` are runtime files: the framework `.gitignore` keeps them out of normal Git status/commits, and Sidekick does not commit them by default. Explicit opt-in commit settings force-add only these known runtime paths after secret scanning.
+   `.ai/TASK.md` と `.ai/RESULT.md` は runtime file です。framework の `.gitignore` により通常の Git status / commit から除外され、Sidekick も既定では commit しません。明示的に opt-in した場合だけ、secret scan 後にこれら既知の runtime path を force-add します。
 
-Configuration parameters:
-- `SIDEKICK_OLLAMA_BASE_URL`: Ollama endpoint (default: `http://localhost:11434`)
-- `SIDEKICK_MODEL`: Default model (default: `qwen2.5:14b`)
-- `SIDEKICK_MAX_RETRIES`: Number of self-fix attempts upon test failure (default: `2`)
-- `SIDEKICK_TIMEOUT_SECONDS`: Request timeout in seconds (default: `180`)
-- `SIDEKICK_AUTO_PUSH`: Push task branches automatically (**default: `false`**)
-- `SIDEKICK_COMMIT_TASK_FILE`: Commit runtime TASK.md (**default: `false`**)
-- `SIDEKICK_COMMIT_RESULT_FILE`: Commit runtime RESULT.md (**default: `false`**)
+設定パラメータ:
+
+- `SIDEKICK_OLLAMA_BASE_URL`: Ollama endpoint（既定: `http://localhost:11434`）
+- `SIDEKICK_MODEL`: 既定モデル（既定: `qwen2.5:14b`）
+- `SIDEKICK_MAX_RETRIES`: test failure 時の自己修正回数（既定: `2`）
+- `SIDEKICK_TIMEOUT_SECONDS`: request timeout 秒数（既定: `180`）
+- `SIDEKICK_AUTO_PUSH`: task branch を自動 push（**既定: `false`**）
+- `SIDEKICK_COMMIT_TASK_FILE`: runtime TASK.md を commit（**既定: `false`**）
+- `SIDEKICK_COMMIT_RESULT_FILE`: runtime RESULT.md を commit（**既定: `false`**）
 
 ---
 
-## TASK.md Workflow
+## TASK.md ワークフロー
 
-### 1. Lead AI creates `.ai/TASK.md`
+### 1. Lead AI が `.ai/TASK.md` を作成
 
-Lead AI fills in `.ai/TASK.md` with bounded requirements:
+Lead AI は、範囲を限定した要件を `.ai/TASK.md` に記述します。
 
 ```markdown
 # Current Task
@@ -405,142 +346,147 @@ Need a string reverser in src/text_utils.py.
 
 ---
 
-## Running Sidekick
+## Sidekick の実行
 
-After `pip install -e .`, the primary CLI is:
+`pip install -e .` 後の primary CLI は次です。
 
 ```powershell
 sidekick --repo-root .
 ```
 
-The existing PowerShell wrapper remains available for compatibility:
+既存の PowerShell wrapper も互換性のため利用できます。
 
 ```powershell
 .\scripts\run-sidekick.ps1
 ```
 
-Options:
-- `-RepoRoot <path>`: Target repository directory (default: `.`)
-- `-Model <model_name>`: Model override (e.g., `-Model "qwen2.5:14b"` or lightweight alternative `-Model "qwen2.5-coder:7b"`)
-- `-EnvFile <path>`: Path to custom `.env` file
+オプション:
 
-On Linux / macOS:
+- `-RepoRoot <path>`: 対象リポジトリ directory（既定: `.`）
+- `-Model <model_name>`: model override（例: `-Model "qwen2.5:14b"`、軽量な代替として `-Model "qwen2.5-coder:7b"`）
+- `-EnvFile <path>`: custom `.env` file の path
+
+Linux / macOS:
 
 ```bash
 sidekick --repo-root . --model qwen2.5:14b
 ```
 
-The `./scripts/run-sidekick` wrapper remains available.
+`./scripts/run-sidekick` wrapper も引き続き利用できます。
 
 ---
 
-## RESULT.md Review
+## RESULT.md のレビュー
 
-Upon completion, Sidekick generates `.ai/RESULT.md`:
+処理完了後、Sidekick は `.ai/RESULT.md` を生成します。
 
-- **Status**: `SUCCESS`, `PARTIAL`, `BLOCKED`, or `FAILED`
-- **Summary**: Concise overview of changes made
-- **Files Changed**: List of modified/created files
-- **Commands Executed**: List of commands run and exit codes
-- **Test Results**: Output from test runs
-- **Errors**: Diagnostic errors if tests failed
-- **Decisions Required**: Items requiring Lead AI decision
-- **Git Diff Summary**: `git diff --stat` or untracked file summary
+- **Status**: `SUCCESS`、`PARTIAL`、`BLOCKED`、`FAILED` のいずれか
+- **Summary**: 実施した変更の簡潔な概要
+- **Files Changed**: 変更 / 作成した file の一覧
+- **Commands Executed**: 実行した command と exit code
+- **Test Results**: test 実行結果
+- **Errors**: test failure 時の診断 error
+- **Decisions Required**: Lead AI の判断が必要な項目
+- **Git Diff Summary**: `git diff --stat` または untracked file の概要
 
-Lead AI inspects `.ai/RESULT.md`, verifies the diff, and accepts or iterates.
-
----
-
-## Git Workflow & Safety (Phase 1 & Phase 2)
-
-### Phase 1 Manual Workflow
-- **No automatic merge or push**: Sidekick modifies local files and runs permitted checks. Run with `scripts/run-sidekick.ps1`.
-
-### Phase 2 Autonomous Git Automation
-- When running via `scripts/run-sidekick-phase2.ps1` or `scripts/watch-sidekick.ps1`:
-  1. **Preflight Check**: Verifies clean git working tree and remote configuration.
-  2. **Automated Branching**: Automatically switches to or creates `ai/<task-id>` from base branch. Direct execution or push to `main` is strictly forbidden.
-  3. **Diff Guard**: Before commit, checks all modified files against `Allowed Files` (and `.ai/TASK.md` / `.ai/RESULT.md`). Any unauthorized modification immediately blocks commit and push (`status: BLOCKED`).
-  4. **Secret Scan**: Inspects changed files for API keys, AWS tokens, private keys, and high-entropy secrets. Detects and halts if any secret is found (`status: BLOCKED_SECRET_DETECTED`).
-  5. **Safe Commit & Push**: Commits source changes with message `ai(<task-id>): <summary>`. Push is **disabled by default** and, when explicitly enabled, is restricted to `origin ai/<task-id>`.
-  6. **Final Status**: Marks `.ai/state.json` and `.ai/RESULT.md` as `READY_FOR_REVIEW` for Lead AI or human review.
+Lead AI は `.ai/RESULT.md` を確認し、diff を検証して、受け入れるか追加修正を行います。
 
 ---
 
-## Phase 2 Watcher Mode (Autonomous Background Worker)
+## Git ワークフローと安全性（Phase 1 / Phase 2）
 
-Run the Task Watcher to monitor `.ai/TASK.md` continuously:
+### Phase 1 手動ワークフロー
+
+- **自動 merge / push なし**: Sidekick は local file を変更し、許可された check を実行します。`scripts/run-sidekick.ps1` で実行します。
+
+### Phase 2 自律 Git 自動化
+
+`scripts/run-sidekick-phase2.ps1` または `scripts/watch-sidekick.ps1` から実行した場合:
+
+1. **Preflight Check**: Git working tree が clean か、remote 設定が妥当かを確認します。
+2. **Automated Branching**: base branch から `ai/<task-id>` へ自動 switch、または branch を作成します。`main` での直接実行や push は厳格に禁止します。
+3. **Diff Guard**: commit 前に、すべての変更 file を `Allowed Files`（および `.ai/TASK.md` / `.ai/RESULT.md`）と照合します。未許可の変更があれば commit / push を即座に block します（`status: BLOCKED`）。
+4. **Secret Scan**: 変更 file に API key、AWS token、private key、高 entropy secret が含まれないか検査します。secret を検出した場合は停止します（`status: BLOCKED_SECRET_DETECTED`）。
+5. **Safe Commit & Push**: source の変更を `ai(<task-id>): <summary>` という message で commit します。push は **既定で無効**で、明示的に有効化した場合も `origin ai/<task-id>` に限定されます。
+6. **Final Status**: `.ai/state.json` と `.ai/RESULT.md` を `READY_FOR_REVIEW` にし、Lead AI または人間による review 待ちにします。
+
+---
+
+## Phase 2 Watcher モード（自律バックグラウンド Worker）
+
+Task Watcher を起動し、`.ai/TASK.md` を継続監視します。
 
 ```powershell
 .\scripts\watch-sidekick.ps1 -Interval 5
 ```
 
-- Calculates SHA256 hashes of `.ai/TASK.md` to prevent redundant runs.
-- Manages concurrency via an exclusive `.ai/sidekick.lock` shared with delegation.
-  Stale locks require Lead inspection; elapsed time never steals a live Worker lock.
-- Logs execution state in `.ai/state.json`.
+- `.ai/TASK.md` の SHA256 hash を計算し、同じ task の重複実行を防ぎます。
+- 委譲機構と共有する exclusive `.ai/sidekick.lock` で concurrency を制御します。stale lock は Lead による確認が必要で、経過時間だけを理由に動作中 Worker の lock を奪いません。
+- 実行 state を `.ai/state.json` に記録します。
 
 ---
 
-## Real Ollama E2E Tests (Dedicated Validation Lane)
+## 実 Ollama E2E テスト（専用検証レーン）
 
-The Phase 2 end-to-end tests invoke a **real local Ollama instance** and are intentionally opt-in. Standard pull request CI runs the fast, deterministic test suite and skips external-runtime tests.
+Phase 2 end-to-end test は **実際の local Ollama instance** を呼び出すため、意図的に opt-in にしています。通常の pull request CI では高速かつ deterministic な test suite を実行し、外部 runtime を必要とする test は skip します。
 
-To run the real E2E suite locally using the dedicated helper:
+専用 helper を使って local で実 E2E suite を実行する場合:
 
 ```bash
 python scripts/run-real-e2e.py --model qwen2.5:14b
 ```
 
-Alternatively, invoke via environment variable:
+環境変数から実行する場合:
 
 ```powershell
 $env:SIDEKICK_RUN_REAL_OLLAMA_E2E = "true"
 python -m unittest tests.test_phase2_e2e -v
 ```
 
-On Linux/macOS:
+Linux / macOS:
 
 ```bash
 SIDEKICK_RUN_REAL_OLLAMA_E2E=true python -m unittest tests.test_phase2_e2e -v
 ```
 
-On GitHub Actions, real Ollama execution is isolated in a separate manual workflow:
-- [Real Ollama E2E (Manual Lane)](.github/workflows/e2e-ollama.yml) — Triggerable via `workflow_dispatch` with custom model selection.
+GitHub Actions では、実 Ollama 実行を別の manual workflow に分離しています。
+
+- [Real Ollama E2E (Manual Lane)](.github/workflows/e2e-ollama.yml) — `workflow_dispatch` から任意の model を選択して実行できます。
 
 ---
 
-## Security Model & Operational Notice
+## セキュリティモデルと運用上の注意
 
 > [!WARNING]
-> **Local Execution & Untrusted Tasks Warning**:
-> This tool executes code, builds, and test commands locally on your machine via subprocesses. While dangerous commands (`rm -rf`, destructive cloud writes, git hard resets) and undeclared file edits are guarded, command execution still interacts directly with your host environment. **Do not run untrusted or unreviewed tasks from unknown sources.**
+> **ローカル実行と信頼できないタスクに関する警告**:
+> この tool は subprocess を通じて、ユーザーの machine 上で code、build、test command を実行します。危険な command（`rm -rf`、破壊的な cloud write、`git reset --hard`）や宣言されていない file edit を guard しますが、command 実行自体は host environment と直接やり取りします。**未知の source から受け取った、信頼できない・未レビューの task は実行しないでください。**
 >
-> For full threat boundaries, what is protected vs. out-of-scope, and vulnerability disclosure instructions, see [SECURITY.md](SECURITY.md).
+> 完全な threat boundary、保護対象 / 対象外、脆弱性報告手順は [SECURITY.md](SECURITY.md) を参照してください。
 
-- **Permanent Rules**: Stored in `.ai/RULES.md`.
-- **Allowed Files List & Diff Guard**: Path traversal and access to undeclared files are blocked at execution and before Git commit.
-- **Immutable Files**: `.ai/DECISIONS.md`, `.git/`, and `.env*` cannot be altered.
-- **Destructive Command Blocking**: Commands matching `rm -rf`, `git reset --hard`, `terraform apply`, `aws/az/gcloud` write operations are intercepted and denied.
-- **Secret Redaction & Pre-commit Scanning**: Detects and masks credentials in outputs; blocks commits containing raw secrets.
-- **Git Protection**: Local LLM never executes raw git commands; all git operations are performed by hardened Python manager. Push to `main` is blocked.
-- **Runtime Task Data**: `.ai/TASK.md` / `.ai/RESULT.md` are ignored runtime files; versioned examples live under `templates/`. Sidekick does not commit them by default.
-- **Task Data Isolation Recommendation**: This repository provides the sidekick framework. For actual proprietary projects, configure the sidekick in your target project repository rather than committing sensitive operational task/result data.
-- **Independent Verification**: For stronger evidence, phase contracts, and merge approval boundaries, use the [AI Engineering Factory integration path](docs/factory-integration.md).
-
----
-
-## License
-
-This project is licensed under the [MIT License](LICENSE).
+- **Permanent Rules**: `.ai/RULES.md` に保存します。
+- **Allowed Files List & Diff Guard**: path traversal と未宣言 file への access を、実行時と Git commit 前の両方で block します。
+- **Immutable Files**: `.ai/DECISIONS.md`、`.git/`、`.env*` は変更できません。
+- **Destructive Command Blocking**: `rm -rf`、`git reset --hard`、`terraform apply`、`aws/az/gcloud` の write operation に一致する command を intercept して拒否します。
+- **Secret Redaction & Pre-commit Scanning**: output 内の credential を検出して mask し、raw secret を含む commit を block します。
+- **Git Protection**: Local LLM は raw git command を実行しません。すべての Git operation は hardening された Python manager が実行し、`main` への push は block します。
+- **Runtime Task Data**: `.ai/TASK.md` / `.ai/RESULT.md` は ignore される runtime file です。version 管理する example は `templates/` 配下に置きます。Sidekick は既定ではこれらを commit しません。
+- **Task Data Isolation Recommendation**: このリポジトリが提供するのは Sidekick framework です。実際の proprietary project では、機密性のある task / result data をこの framework repository に commit せず、対象 project repository 側で Sidekick を構成してください。
+- **Independent Verification**: より強い evidence、phase contract、merge approval boundary が必要な場合は [AI Engineering Factory 連携](docs/factory-integration.md) を利用してください。
 
 ---
 
-## References & Acknowledgments
+## ライセンス
 
-This project's architecture and Lead/Worker division of labor concept is inspired by Cognition's Local Fusion:
+この project は [MIT License](LICENSE) で提供します。
+
+---
+
+## 参考・謝辞
+
+この project の architecture と Lead / Worker の役割分担の考え方は、Cognition の Local Fusion から着想を得ています。
+
 - [Cognition: Local Fusion](https://cognition.com/blog/local-fusion)
 
-Related project:
-- [AI Engineering Factory integration](docs/factory-integration.md) — independent verification, phase contracts, and human-approved merge boundaries
+関連 project:
 
+- [AI Engineering Factory integration](docs/factory-integration.md) — 独立検証、phase contract、人間が承認する merge boundary
