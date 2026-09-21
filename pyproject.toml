@@ -22,6 +22,7 @@ dev = [
 [project.scripts]
 sidekick = "sidekick.cli:main"
 sidekick-delegate = "sidekick.delegate:main"
+ai-dev-bootstrap = "sidekick.bootstrap:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

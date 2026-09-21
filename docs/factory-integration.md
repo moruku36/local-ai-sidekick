@@ -34,6 +34,18 @@ Human review
 Human merge
 ~~~
 
+## Global session bootstrap
+
+`ai-dev-bootstrap` (see [Global Integration](../README.md#global-integration-optional))
+reports Factory as `AVAILABLE`/`CONFIGURED`/`UNAVAILABLE` at SessionStart by
+checking for local markers only (an `AI_ENGINEERING_FACTORY_HOME`
+environment variable, a `factory.yaml`/`.factory` manifest in the repository,
+or a Factory executable on `PATH`). This is presence detection, nothing more:
+the bootstrap never runs Factory verification, never treats a Sidekick
+RESULT as Factory-grade evidence, and never invokes the Factory automatically
+at any point. Whether and when to actually run the Factory against a
+candidate is still the Lead's decision, made using the flow below.
+
 ## Important boundary
 
 The Factory does not currently invoke Local AI Sidekick as a native worker runtime. There is no implicit adapter that turns a Sidekick run into trusted evidence.

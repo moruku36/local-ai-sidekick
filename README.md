@@ -21,6 +21,7 @@ Communication between Lead AI and Sidekick is file-mediated via local Markdown r
 | Phase 2 safe branch / commit automation | Implemented |
 | Automatic LOCAL / LEAD / BLOCKED delegation | Implemented |
 | Claude Code Lead integration | Implemented |
+| Global Codex/Claude SessionStart bootstrap (`sidekick integrate`) | Implemented |
 | Automatic push | **Opt-in only; default OFF** |
 | Automatic merge | Not supported |
 
@@ -91,6 +92,114 @@ runs do not restart on polling. Inspect a stale lock's owner and stop any live
 Worker before removing it; age alone is insufficient. Repair corrupt state from
 a trusted copy rather than deleting history. Delegation currently requires the
 default `.ai/TASK.md` path, even though the legacy CLI supports custom paths.
+
+## Global Integration (optional)
+
+Run this **once** to make Codex and Claude Code pick up delegation
+automatically in *any* Git repository, without saying "use Sidekick" or
+"check LOCAL/LEAD" each time:
+
+```bash
+pip install -e ".[dev]"
+sidekick integrate --global --host all
+sidekick integrate --status
+```
+
+After that:
+
+```bash
+cd ~/projects/foo
+codex
+# or
+cd ~/projects/foo
+claude
+```
+
+is all a user ever has to type.
+
+**What this installs.** `sidekick integrate` adds a small SessionStart
+integration to your global config, keyed to a lightweight `ai-dev-bootstrap`
+entrypoint (also runnable directly: `ai-dev-bootstrap` or
+`python -m sidekick.bootstrap`):
+
+- **Claude Code**: a `SessionStart` hook entry in `~/.claude/settings.json`
+  that runs `ai-dev-bootstrap --json` and injects its output as
+  `additionalContext`.
+- **Codex**: a marked instruction block appended to `~/.codex/AGENTS.md`
+  telling Codex to run `ai-dev-bootstrap` at session start and follow
+  `.ai/DELEGATION.md` in the current repository when present. (Codex's own
+  hook schema is new and still changing; the documented, stable global
+  `AGENTS.md` file is used instead of guessing at it.)
+
+`ai-dev-bootstrap` only inspects local state: `cwd`, whether it's a Git
+repository, whether `.ai/DELEGATION.md`/`.ai/RULES.md` exist, whether a
+Worker lock is held, and whether AI Engineering Factory looks present. It
+never runs tests, Ollama inference, Factory verification, `git fetch`/`pull`,
+or any other network call, and it never writes to the repository — it just
+prints a short (bounded, secret-free) Development Context block like:
+
+```text
+AI DEVELOPMENT ENVIRONMENT
+Repository:
+/home/you/projects/foo
+Local AI Sidekick:
+NOT_INITIALIZED
+...
+```
+
+**What happens with that context.** The Lead Host still applies
+`.ai/DELEGATION.md` exactly as before (see "Automatic Delegation" above):
+LOCAL work is handed to the Worker via `sidekick-delegate`, LEAD work stays
+with the Lead Host, and BLOCKED work stops for a human decision. If the
+repository has no `.ai/` yet, the Lead only runs the non-destructive
+`sidekick init .` right before the *first* LOCAL delegation — never
+speculatively at session start, and never with `--force`. Running the
+Watcher is still a separate, explicit step (see "Troubleshooting" above);
+`ai-dev-bootstrap` does not start, stop, or manage it.
+
+**AI Engineering Factory** is only ever *detected* (`AVAILABLE` /
+`CONFIGURED` / `UNAVAILABLE` in the context above), never invoked
+automatically. See [factory-integration.md](docs/factory-integration.md) for
+when to actually run it.
+
+**Safety and idempotency.** Installing is merge-based and safe to re-run any
+number of times:
+
+- Your existing `~/.claude/settings.json` hooks and `~/.codex/AGENTS.md`
+  content are preserved untouched; only our own marked entry is added or
+  updated.
+- Running the same install command 10 times in a row produces the same
+  final state — no duplicate hooks, no duplicate blocks.
+- A malformed existing `settings.json` is backed up
+  (`settings.json.bak-<timestamp>`) before it is repaired, never silently
+  discarded.
+- If Sidekick, Factory, Ollama, or Git are missing or misconfigured,
+  `ai-dev-bootstrap` reports `UNAVAILABLE`/`NOT_INITIALIZED`/`DEGRADED` in
+  its context instead of failing; it never breaks the ability to start
+  Codex or Claude Code itself, and it never weakens `.ai/RULES.md` or the
+  Fail-Closed BLOCKED path.
+
+**Other commands:**
+
+```bash
+sidekick integrate --global --host codex           # Codex only
+sidekick integrate --global --host claude          # Claude Code only
+sidekick integrate --global --host all --dry-run   # preview changes, write nothing
+sidekick integrate --status                        # show current install state
+sidekick integrate --remove --host all             # uninstall (only our own entries)
+```
+
+**Disable/uninstall:** `sidekick integrate --remove --host all` removes the
+SessionStart hook and the marked `AGENTS.md` block and leaves everything
+else in your global config untouched. To disable delegation itself without
+touching global config, use `SIDEKICK_DELEGATION_ENABLED=false` as above.
+
+**Troubleshooting:** if a session doesn't seem to pick up the context, run
+`sidekick integrate --status` to confirm installation, then run
+`ai-dev-bootstrap` directly in the target repository to see its raw output.
+On Windows, the hook command is generated with `sys.executable`, so it works
+from PowerShell, `cmd.exe`, and WSL2 without extra PATH configuration; paths
+containing spaces are quoted automatically.
 
 ## Supported Lead Hosts
 
