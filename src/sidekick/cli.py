@@ -26,6 +26,17 @@ def main():
     doc_parser.add_argument("--model", type=str, default=None, help="Ollama model name (overrides config)")
     doc_parser.add_argument("--env-file", type=str, default=None, help="Path to .env configuration file")
 
+    # integrate subcommand (global Codex / Claude Code SessionStart bootstrap)
+    integrate_parser = subparsers.add_parser(
+        "integrate",
+        help="Install/inspect/remove the global ai-dev-bootstrap SessionStart integration for Codex/Claude Code",
+    )
+    integrate_parser.add_argument("--global", dest="global_", action="store_true", help="Apply to the user's global configuration (the only supported scope)")
+    integrate_parser.add_argument("--host", choices=["codex", "claude", "all"], default="all", help="Target host (default: all)")
+    integrate_parser.add_argument("--status", action="store_true", help="Report current integration status instead of installing")
+    integrate_parser.add_argument("--remove", action="store_true", help="Remove a previously installed integration instead of installing")
+    integrate_parser.add_argument("--dry-run", action="store_true", help="Show planned changes without writing any files")
+
     # run subcommand (explicit)
     run_parser = subparsers.add_parser("run", help="Run sidekick execution on target repository")
     run_parser.add_argument("--repo-root", type=str, default=".", help="Root directory of target repository")
@@ -58,6 +69,14 @@ def main():
         print("  2. Compatible Lead Hosts can use the generated delegation entrypoints; host-specific instruction loading may require setup.")
         print("  3. For manual tasks, write .ai/TASK.md and run 'sidekick --watch' or 'sidekick --auto-git'")
         sys.exit(0)
+
+    if args.command == "integrate":
+        from .integrate import run_integrate
+
+        if args.status and args.remove:
+            print("Error: --status and --remove are mutually exclusive.", file=sys.stderr)
+            sys.exit(2)
+        sys.exit(run_integrate(host=args.host, status=args.status, remove=args.remove, dry_run=args.dry_run))
 
     if args.command == "doctor":
         target = Path(args.path).resolve()

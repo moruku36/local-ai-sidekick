@@ -91,6 +91,26 @@ safe task_id and explain the recovery in Background. Do not use this to retry
 automatically. Review RUNNING after a crash and record a terminal BLOCKED status
 only after confirming no Worker is active; never clear a live lock by age.
 
+## Session bootstrap and lazy initialization
+
+If Local AI Sidekick's `ai-dev-bootstrap` is registered as a global
+SessionStart integration (`sidekick integrate --global`), it only inspects
+local state (cwd, `.git`, `.ai/`, lock files) and prints a short Development
+Context; it never runs tests, Ollama inference, Factory verification, or any
+network/Git-remote operation, and it never writes to this repository.
+
+If that context reports Local AI Sidekick as `NOT_INITIALIZED`, do not run
+`sidekick init .` speculatively. Wait until the first LOCAL delegation
+decision in this session, then run it immediately before calling
+`sidekick-delegate`. `sidekick init .` is non-destructive: it never
+overwrites `AGENTS.md`, `CLAUDE.md`, `.gitignore`, or existing `.ai/*` files
+without `--force`, which automatic delegation must never pass.
+
+If the context reports the Worker as `LOCK_STALE`, do not delete
+`.ai/sidekick.lock` automatically; treat it like any other crash-recovery
+case in "Loop prevention and next task" above and resolve it with the user
+before retrying.
+
 ## Host integration boundary
 
 Root AGENTS.md is the explicit repository-level Lead entrypoint. Claude Code
