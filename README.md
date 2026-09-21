@@ -78,6 +78,17 @@ macOS / Linux では `sidekick-delegate ...` と `sidekick --repo-root <target-r
 
 古い lock を削除する前に owner を確認し、生存している Worker がある場合は停止してください。経過時間だけを理由に lock を奪ってはいけません。破損した state は履歴を削除するのではなく、信頼できる copy から修復してください。従来 CLI は custom path に対応していますが、自動委譲では現在、既定の `.ai/TASK.md` path が必須です。
 
+## Claude Code on the web 向けの Session Bootstrap（このリポジトリ）
+
+このリポジトリ自体に、プロジェクトスコープの `SessionStart` hook
+（`.claude/settings.json` + `.claude/hooks/session-start.sh`、Git 管理下）を同梱しています。
+[Claude Code on the web](https://code.claude.com/docs/en/claude-code-on-the-web) では
+スレッド（セッション）ごとに使い捨ての container が新しく用意されるため、下記の
+**グローバル**な `~/.claude` 連携はスレッドをまたいで永続しません。プロジェクトスコープの
+hook はリポジトリと一緒に運ばれるため永続します。`src/` から直接 `ai-dev-bootstrap` を
+実行するだけなので install も外部依存も不要で、この hook がデフォルトブランチに
+merge されていれば、このリポジトリを開くどのスレッドでもすぐに動作します。
+
 ## グローバル連携（任意）
 
 Codex と Claude Code が、毎回「Sidekick を使って」「LOCAL/LEAD を確認して」と指示しなくても、**任意の Git リポジトリで自動的に委譲を認識する**ようにするには、次を **1 回だけ**実行します。
