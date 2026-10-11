@@ -137,7 +137,7 @@ local-ai-sidekick/
 │       └── workspace.py   # Safe file I/O and process execution
 ├── docs/
 │   ├── architecture.md    # Technical architecture & design (this document)
-│   ├── factory-integration.md # AI Engineering Factory integration guide
+│   ├── factory-integration.md # AI Governance Control integration guide
 │   └── delegation-request.example.json # Delegation payload example
 ├── tests/
 │   ├── test_sidekick_core.py # Phase 1 unit tests
@@ -180,7 +180,7 @@ local-ai-sidekick/
 
 ## 5. Governance Integration
 
-For independent verification, machine-readable phase boundaries, evidence generation, and Human merge approval, see [AI Engineering Factory Integration](factory-integration.md). Local AI Sidekick remains the Worker; the Factory remains the governance/verifier layer.
+For independent verification, machine-readable phase boundaries, evidence generation, and Human merge approval, see [AI Governance Control Integration](factory-integration.md). Local AI Sidekick remains the Worker; the AI Governance Control remains the governance/verifier layer.
 
 ## 6. References
 

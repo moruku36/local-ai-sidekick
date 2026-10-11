@@ -52,13 +52,13 @@ class TestBootstrapContext(unittest.TestCase):
     def test_factory_unavailable_by_default(self):
         self._init_git(self.test_dir)
         context = build_context(self.test_dir)
-        self.assertIn("AI Engineering Factory:\nUNAVAILABLE", context)
+        self.assertIn("AI Governance Control:\nUNAVAILABLE", context)
 
     def test_factory_configured_via_manifest(self):
         self._init_git(self.test_dir)
         (self.test_dir / "factory.yaml").write_text("x: 1", encoding="utf-8")
         context = build_context(self.test_dir)
-        self.assertIn("AI Engineering Factory:\nCONFIGURED", context)
+        self.assertIn("AI Governance Control:\nCONFIGURED", context)
 
     def test_output_contains_no_secret_like_strings(self):
         self._init_git(self.test_dir)
