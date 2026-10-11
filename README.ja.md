@@ -27,7 +27,7 @@ Lead AI と Sidekick の通信は、ローカル Markdown ランタイムファ�
 | 自動 push | **オプトインのみ。既定値は OFF** |
 | 自動 merge | 非対応 |
 
-独立検証と人間による承認境界については [AI Engineering Factory 連携](docs/factory-integration.md) を参照してください。  
+独立検証と人間による承認境界については [AI Governance Control 連携](docs/factory-integration.md) を参照してください。
 セキュリティモデル、脅威境界、脆弱性報告については [Security Policy](SECURITY.md) を参照してください。
 
 ---
@@ -118,9 +118,9 @@ claude
 - **Claude Code**: `~/.claude/settings.json` に `SessionStart` hook を追加し、`ai-dev-bootstrap --json` を実行して、その出力を `additionalContext` として注入します。
 - **Codex**: `~/.codex/AGENTS.md` に識別可能な instruction block を追記し、session 開始時に `ai-dev-bootstrap` を実行して、現在のリポジトリに `.ai/DELEGATION.md` が存在する場合はそれに従うよう指示します。Codex の hook schema は新しく変更も続いているため、推測で hook を利用せず、文書化された安定したグローバル `AGENTS.md` を使用します。
 
-`ai-dev-bootstrap` が確認するのはローカル状態だけです。`cwd`、Git リポジトリかどうか、`.ai/DELEGATION.md` / `.ai/RULES.md` の有無、Worker lock の保持状態、AI Engineering Factory が存在するように見えるかを確認します。
+`ai-dev-bootstrap` が確認するのはローカル状態だけです。`cwd`、Git リポジトリかどうか、`.ai/DELEGATION.md` / `.ai/RULES.md` の有無、Worker lock の保持状態、AI Governance Control が存在するように見えるかを確認します。
 
-テスト、Ollama inference、Factory 検証、`git fetch` / `pull`、その他の network call は実行しません。またリポジトリにも書き込みません。短く、上限付きで、secret を含まない Development Context block を出力するだけです。
+テスト、Ollama inference、AI Governance Control 検証、`git fetch` / `pull`、その他の network call は実行しません。またリポジトリにも書き込みません。短く、上限付きで、secret を含まない Development Context block を出力するだけです。
 
 ```text
 AI DEVELOPMENT ENVIRONMENT
@@ -137,14 +137,14 @@ NOT_INITIALIZED
 
 Watcher の起動は引き続き別の明示的な操作です（上の「トラブルシューティング」を参照）。`ai-dev-bootstrap` が Watcher を起動・停止・管理することはありません。
 
-**AI Engineering Factory** は context 上で `AVAILABLE` / `CONFIGURED` / `UNAVAILABLE` として **検出されるだけ**で、自動実行されません。実際に実行するタイミングは [factory-integration.md](docs/factory-integration.md) を参照してください。
+**AI Governance Control** は context 上で `AVAILABLE` / `CONFIGURED` / `UNAVAILABLE` として **検出されるだけ**で、自動実行されません。実際に実行するタイミングは [factory-integration.md](docs/factory-integration.md) を参照してください。
 
 **安全性と冪等性。** インストールは既存設定へ merge する方式で、何度実行しても安全です。
 
 - 既存の `~/.claude/settings.json` の hook と `~/.codex/AGENTS.md` の内容はそのまま保持し、Sidekick 自身の識別済み entry だけを追加または更新します。
 - 同じ install command を 10 回連続で実行しても最終状態は同じです。hook や block が重複しません。
 - 既存の `settings.json` が壊れている場合は、修復前に `settings.json.bak-<timestamp>` として backup し、黙って破棄しません。
-- Sidekick、Factory、Ollama、Git が存在しない、または設定不備でも、`ai-dev-bootstrap` は context 上で `UNAVAILABLE` / `NOT_INITIALIZED` / `DEGRADED` と報告するだけです。Codex や Claude Code 自体の起動を妨げず、`.ai/RULES.md` や Fail-Closed の BLOCKED 経路を弱めません。
+- Sidekick、AI Governance Control、Ollama、Git が存在しない、または設定不備でも、`ai-dev-bootstrap` は context 上で `UNAVAILABLE` / `NOT_INITIALIZED` / `DEGRADED` と報告するだけです。Codex や Claude Code 自体の起動を妨げず、`.ai/RULES.md` や Fail-Closed の BLOCKED 経路を弱めません。
 
 **その他のコマンド:**
 
@@ -484,7 +484,7 @@ GitHub Actions では、実 Ollama 実行を別の manual workflow に分離し�
 - **Git Protection**: Local LLM は raw git command を実行しません。すべての Git operation は hardening された Python manager が実行し、`main` への push は block します。
 - **Runtime Task Data**: `.ai/TASK.md` / `.ai/RESULT.md` は ignore される runtime file です。version 管理する example は `templates/` 配下に置きます。Sidekick は既定ではこれらを commit しません。
 - **Task Data Isolation Recommendation**: このリポジトリが提供するのは Sidekick framework です。実際の proprietary project では、機密性のある task / result data をこの framework repository に commit せず、対象 project repository 側で Sidekick を構成してください。
-- **Independent Verification**: より強い evidence、phase contract、merge approval boundary が必要な場合は [AI Engineering Factory 連携](docs/factory-integration.md) を利用してください。
+- **Independent Verification**: より強い evidence、phase contract、merge approval boundary が必要な場合は [AI Governance Control 連携](docs/factory-integration.md) を利用してください。
 
 ---
 
@@ -502,4 +502,4 @@ GitHub Actions では、実 Ollama 実行を別の manual workflow に分離し�
 
 関連 project:
 
-- [AI Engineering Factory integration](docs/factory-integration.md) — 独立検証、phase contract、人間が承認する merge boundary
+- [AI Governance Control integration](docs/factory-integration.md) — 独立検証、phase contract、人間が承認する merge boundary
