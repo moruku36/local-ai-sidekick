@@ -122,9 +122,9 @@ def _factory_status(repo_root: Path | None) -> str:
         for name in (".factory", "factory.yaml", "factory.yml", "factory_manifest.yaml"):
             if (repo_root / name).exists():
                 return "CONFIGURED"
-        sibling = repo_root.parent / "ai-engineering-factory"
-        if sibling.is_dir():
-            return "AVAILABLE"
+        for clone_name in ("ai-governance-control", "ai-engineering-factory"):
+            if (repo_root.parent / clone_name).is_dir():
+                return "AVAILABLE"
     for candidate in ("ai-engineering-factory", "factory"):
         if shutil.which(candidate):
             return "AVAILABLE"
