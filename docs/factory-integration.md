@@ -1,6 +1,6 @@
 # AI Governance Control Integration
 
-Local AI Sidekick and [AI Governance Control](https://github.com/moruku36/ai-engineering-factory) solve different problems and are intended to be composed rather than merged into one runtime.
+Local AI Sidekick and [AI Governance Control](https://github.com/moruku36/ai-governance-control) solve different problems and are intended to be composed rather than merged into one runtime.
 
 ## Responsibility split
 
@@ -106,5 +106,5 @@ For stronger separation, do not expose a Human merge-capable GitHub credential t
 
 - [Local AI Sidekick README](../README.md)
 - [Local AI Sidekick Architecture](architecture.md)
-- [AI Governance Control Getting Started](https://github.com/moruku36/ai-engineering-factory/blob/main/docs/getting-started.md)
-- [AI Governance Control Web Security Control Lab Case Study](https://github.com/moruku36/ai-engineering-factory/blob/main/docs/case-studies/web-security-control-lab.md)
+- [AI Governance Control Getting Started](https://github.com/moruku36/ai-governance-control/blob/main/docs/getting-started.md)
+- [AI Governance Control Web Security Control Lab Case Study](https://github.com/moruku36/ai-governance-control/blob/main/docs/case-studies/web-security-control-lab.md)
