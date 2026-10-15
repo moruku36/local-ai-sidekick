@@ -186,3 +186,7 @@ For independent verification, machine-readable phase boundaries, evidence genera
 
 - [Cognition: Local Fusion](https://cognition.com/blog/local-fusion)
 
+
+## 7. Proposed Worker role specialization (2026-10-15)
+
+**Not implemented.** The [Worker role roadmap](worker-role-roadmap.md) proposes command-runner, code-explore and spec-coder within the existing delegation and safety boundaries. It documents the changes needed beyond role labels, separates implementation completion from verification evidence, and defines a staged evaluation using the same model first. It does not change the current runtime or independent verification contract.

@@ -533,3 +533,7 @@ GitHub Actions では、実 Ollama 実行を別の manual workflow に分離し�
 [既存のFactory連携](docs/factory-integration.md)を基礎にします。Leadが範囲を決め、Sidekickが候補を作り、AI Governance Controlが独立検証し、人がPRを確認します。ネイティブadapterやOpenClaw依存の採用は別の検討です。論文を参照しただけでランタイム導入済み・新プロトコル対応済みとはしません。
 
 **次の調査目標：** チェックポイント契約と少数の固定オフライン実装・復旧タスクを定義し、構成変更の前に再現可能なベースラインを残します。
+
+## Worker の役割分離計画（2026-10-15）
+
+**未実装の提案です。** [Worker role roadmap / 改修計画](docs/worker-role-roadmap.md)に、実行役・調査役・実装役の契約、導入順、現行コードの静的観察、比較評価の方法を記録しています。既存の Lead / Worker の安全境界と独立検証を維持します。
