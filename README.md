@@ -76,3 +76,7 @@ The following are **our adaptations**, not reproduced paper results. No per-turn
 Build on [the existing Factory handoff](docs/factory-integration.md): Lead scopes work, Sidekick proposes a candidate, AI Governance Control independently verifies it, and a human reviews the PR. A native adapter or OpenClaw dependency is a separate future decision. OpenClaw is an architectural reference here, not an installed runtime or a new protocol guarantee.
 
 **Next research milestone:** define the checkpoint contract and a small fixed offline coding/recovery task set, then record a reproducible baseline before choosing a runtime change.
+
+## Planned Worker roles (2026-10-15)
+
+**Proposed; not implemented.** See the [Worker role roadmap](docs/worker-role-roadmap.md) for command-runner, code-explore and spec-coder contracts, staged adoption, current-code observations and evaluation criteria. The existing Lead/Worker safety boundary and independent verification remain in place. An English summary is included in the plan.
