@@ -1,6 +1,7 @@
 # Worker role roadmap / Worker の役割分離計画
 
-Date / 記録日: **2026-10-15**  
+Date / 記録日: **2026-10-15**
+
 Status / 状態: **Proposed, not implemented / 未実装の提案**
 
 ## 目的と出典
