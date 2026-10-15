@@ -41,7 +41,7 @@ Initialize the repository where the worker will run, then use the [task template
 User → Lead AI → bounded TASK.md → Local Sidekick → RESULT.md → Lead review
 ```
 
-The lead decides the scope and allowed commands. The worker follows [the permanent rules](.ai/RULES.md), operates on a task branch, and reports blocked or failed work for review. Cloud writes, destructive operations, and merging remain outside the worker's autonomous scope. See the [security policy](SECURITY.md) and [AI Governance Control integration](docs/factory-integration.md) for the trust boundary and independent verification model.
+The lead decides the scope and allowed commands. The worker follows [the permanent rules](.ai/RULES.md), operates on a task branch, and reports blocked or failed work for review. Cloud writes, destructive operations, and merging remain outside the worker's autonomous scope. Local command execution interacts with the host and is not a complete sandbox for untrusted tasks. See the [security policy](SECURITY.md) and [AI Governance Control integration](docs/factory-integration.md) for the trust boundary and independent verification model.
 
 ## License
 
