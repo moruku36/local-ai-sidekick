@@ -137,7 +137,7 @@ local-ai-sidekick/
 │       └── workspace.py   # Safe file I/O and process execution
 ├── docs/
 │   ├── architecture.md    # Technical architecture & design (this document)
-│   ├── factory-integration.md # AI Engineering Factory integration guide
+│   ├── factory-integration.md # AI Governance Control integration guide
 │   └── delegation-request.example.json # Delegation payload example
 ├── tests/
 │   ├── test_sidekick_core.py # Phase 1 unit tests
@@ -180,9 +180,13 @@ local-ai-sidekick/
 
 ## 5. Governance Integration
 
-For independent verification, machine-readable phase boundaries, evidence generation, and Human merge approval, see [AI Engineering Factory Integration](factory-integration.md). Local AI Sidekick remains the Worker; the Factory remains the governance/verifier layer.
+For independent verification, machine-readable phase boundaries, evidence generation, and Human merge approval, see [AI Governance Control Integration](factory-integration.md). Local AI Sidekick remains the Worker; the AI Governance Control remains the governance/verifier layer.
 
 ## 6. References
 
 - [Cognition: Local Fusion](https://cognition.com/blog/local-fusion)
 
+
+## 7. Proposed Worker role specialization (2026-10-15)
+
+**Not implemented.** The [Worker role roadmap](worker-role-roadmap.md) proposes command-runner, code-explore and spec-coder within the existing delegation and safety boundaries. It documents the changes needed beyond role labels, separates implementation completion from verification evidence, and defines a staged evaluation using the same model first. It does not change the current runtime or independent verification contract.

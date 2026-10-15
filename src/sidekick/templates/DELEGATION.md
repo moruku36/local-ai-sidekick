@@ -96,7 +96,7 @@ only after confirming no Worker is active; never clear a live lock by age.
 If Local AI Sidekick's `ai-dev-bootstrap` is registered as a global
 SessionStart integration (`sidekick integrate --global`), it only inspects
 local state (cwd, `.git`, `.ai/`, lock files) and prints a short Development
-Context; it never runs tests, Ollama inference, Factory verification, or any
+Context; it never runs tests, Ollama inference, AI Governance Control verification, or any
 network/Git-remote operation, and it never writes to this repository.
 
 If that context reports Local AI Sidekick as `NOT_INITIALIZED`, do not run

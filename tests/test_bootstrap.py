@@ -5,8 +5,9 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
-from sidekick.bootstrap import build_context
+from sidekick.bootstrap import _factory_status, build_context
 
 
 class TestBootstrapContext(unittest.TestCase):
@@ -52,13 +53,13 @@ class TestBootstrapContext(unittest.TestCase):
     def test_factory_unavailable_by_default(self):
         self._init_git(self.test_dir)
         context = build_context(self.test_dir)
-        self.assertIn("AI Engineering Factory:\nUNAVAILABLE", context)
+        self.assertIn("AI Governance Control:\nUNAVAILABLE", context)
 
     def test_factory_configured_via_manifest(self):
         self._init_git(self.test_dir)
         (self.test_dir / "factory.yaml").write_text("x: 1", encoding="utf-8")
         context = build_context(self.test_dir)
-        self.assertIn("AI Engineering Factory:\nCONFIGURED", context)
+        self.assertIn("AI Governance Control:\nCONFIGURED", context)
 
     def test_output_contains_no_secret_like_strings(self):
         self._init_git(self.test_dir)
@@ -76,6 +77,42 @@ class TestBootstrapContext(unittest.TestCase):
         # A path that does not exist must degrade, not crash.
         context = build_context(self.test_dir / "does-not-exist")
         self.assertIn("AI DEVELOPMENT ENVIRONMENT", context)
+
+
+class TestFactoryCloneCompatibility(unittest.TestCase):
+    def test_new_and_legacy_sibling_clone_names(self):
+        for sibling_names in (
+            ("ai-governance-control",),
+            ("ai-engineering-factory",),
+            ("ai-governance-control", "ai-engineering-factory"),
+            (),
+        ):
+            with self.subTest(sibling_names=sibling_names), tempfile.TemporaryDirectory() as root:
+                workspace = Path(root)
+                project = workspace / "project"
+                project.mkdir()
+                for name in sibling_names:
+                    (workspace / name).mkdir()
+                with patch.dict("os.environ", {}, clear=True), patch(
+                    "sidekick.bootstrap.shutil.which", return_value=None
+                ) as which:
+                    expected = "AVAILABLE" if sibling_names else "UNAVAILABLE"
+                    self.assertEqual(_factory_status(project), expected)
+                    if sibling_names:
+                        which.assert_not_called()
+
+    def test_configured_status_still_takes_precedence_over_sibling(self):
+        with tempfile.TemporaryDirectory() as root:
+            workspace = Path(root)
+            project = workspace / "project"
+            project.mkdir()
+            (workspace / "ai-governance-control").mkdir()
+            with patch.dict("os.environ", {}, clear=True), patch(
+                "sidekick.bootstrap.shutil.which", return_value=None
+            ) as which:
+                (project / "factory.yaml").write_text("x: 1", encoding="utf-8")
+                self.assertEqual(_factory_status(project), "CONFIGURED")
+                which.assert_not_called()
 
 
 class TestBootstrapMain(unittest.TestCase):

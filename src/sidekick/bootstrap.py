@@ -122,9 +122,9 @@ def _factory_status(repo_root: Path | None) -> str:
         for name in (".factory", "factory.yaml", "factory.yml", "factory_manifest.yaml"):
             if (repo_root / name).exists():
                 return "CONFIGURED"
-        sibling = repo_root.parent / "ai-engineering-factory"
-        if sibling.is_dir():
-            return "AVAILABLE"
+        for clone_name in ("ai-governance-control", "ai-engineering-factory"):
+            if (repo_root.parent / clone_name).is_dir():
+                return "AVAILABLE"
     for candidate in ("ai-engineering-factory", "factory"):
         if shutil.which(candidate):
             return "AVAILABLE"
@@ -170,9 +170,9 @@ def build_context(cwd: Path) -> str:
                 "LOCAL   -> Local AI Sidekick",
                 "LEAD    -> Current Lead Host",
                 "BLOCKED -> Stop and resolve ambiguity",
-                "AI Engineering Factory:",
+                "AI Governance Control:",
                 factory_state,
-                "Factory policy:",
+                "AI Governance Control policy:",
                 "Use only at verification / governance boundaries.",
                 "Never bypass Human Approval.",
                 "Never auto-merge.",

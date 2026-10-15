@@ -2,12 +2,6 @@
 
 [English](README.md) | [日本語](README.ja.md)
 
-Ollamaを使うローカルAIコーディングWorkerです。Lead・Workerの委譲範囲、ファイル制限、コマンド検査、安全なGit自動化、人間のレビューを組み合わせます。
-
----
-
-# Local AI Sidekick
-
 > Ollama を使ってローカルで動作する AI コーディング Worker。Lead/Worker の委譲範囲を明確にし、安全な Git 自動化と人間によるレビューを組み合わせます。
 
 [![CI](https://github.com/moruku36/local-ai-sidekick/actions/workflows/ci.yml/badge.svg)](https://github.com/moruku36/local-ai-sidekick/actions/workflows/ci.yml)
@@ -33,7 +27,7 @@ Lead AI と Sidekick の通信は、ローカル Markdown ランタイムファ�
 | 自動 push | **オプトインのみ。既定値は OFF** |
 | 自動 merge | 非対応 |
 
-独立検証と人間による承認境界については [AI Engineering Factory 連携](docs/factory-integration.md) を参照してください。  
+独立検証と人間による承認境界については [AI Governance Control 連携](docs/factory-integration.md) を参照してください。
 セキュリティモデル、脅威境界、脆弱性報告については [Security Policy](SECURITY.md) を参照してください。
 
 ---
@@ -124,9 +118,9 @@ claude
 - **Claude Code**: `~/.claude/settings.json` に `SessionStart` hook を追加し、`ai-dev-bootstrap --json` を実行して、その出力を `additionalContext` として注入します。
 - **Codex**: `~/.codex/AGENTS.md` に識別可能な instruction block を追記し、session 開始時に `ai-dev-bootstrap` を実行して、現在のリポジトリに `.ai/DELEGATION.md` が存在する場合はそれに従うよう指示します。Codex の hook schema は新しく変更も続いているため、推測で hook を利用せず、文書化された安定したグローバル `AGENTS.md` を使用します。
 
-`ai-dev-bootstrap` が確認するのはローカル状態だけです。`cwd`、Git リポジトリかどうか、`.ai/DELEGATION.md` / `.ai/RULES.md` の有無、Worker lock の保持状態、AI Engineering Factory が存在するように見えるかを確認します。
+`ai-dev-bootstrap` が確認するのはローカル状態だけです。`cwd`、Git リポジトリかどうか、`.ai/DELEGATION.md` / `.ai/RULES.md` の有無、Worker lock の保持状態、AI Governance Control が存在するように見えるかを確認します。
 
-テスト、Ollama inference、Factory 検証、`git fetch` / `pull`、その他の network call は実行しません。またリポジトリにも書き込みません。短く、上限付きで、secret を含まない Development Context block を出力するだけです。
+テスト、Ollama inference、AI Governance Control 検証、`git fetch` / `pull`、その他の network call は実行しません。またリポジトリにも書き込みません。短く、上限付きで、secret を含まない Development Context block を出力するだけです。
 
 ```text
 AI DEVELOPMENT ENVIRONMENT
@@ -143,14 +137,14 @@ NOT_INITIALIZED
 
 Watcher の起動は引き続き別の明示的な操作です（上の「トラブルシューティング」を参照）。`ai-dev-bootstrap` が Watcher を起動・停止・管理することはありません。
 
-**AI Engineering Factory** は context 上で `AVAILABLE` / `CONFIGURED` / `UNAVAILABLE` として **検出されるだけ**で、自動実行されません。実際に実行するタイミングは [factory-integration.md](docs/factory-integration.md) を参照してください。
+**AI Governance Control** は context 上で `AVAILABLE` / `CONFIGURED` / `UNAVAILABLE` として **検出されるだけ**で、自動実行されません。実際に実行するタイミングは [factory-integration.md](docs/factory-integration.md) を参照してください。
 
 **安全性と冪等性。** インストールは既存設定へ merge する方式で、何度実行しても安全です。
 
 - 既存の `~/.claude/settings.json` の hook と `~/.codex/AGENTS.md` の内容はそのまま保持し、Sidekick 自身の識別済み entry だけを追加または更新します。
 - 同じ install command を 10 回連続で実行しても最終状態は同じです。hook や block が重複しません。
 - 既存の `settings.json` が壊れている場合は、修復前に `settings.json.bak-<timestamp>` として backup し、黙って破棄しません。
-- Sidekick、Factory、Ollama、Git が存在しない、または設定不備でも、`ai-dev-bootstrap` は context 上で `UNAVAILABLE` / `NOT_INITIALIZED` / `DEGRADED` と報告するだけです。Codex や Claude Code 自体の起動を妨げず、`.ai/RULES.md` や Fail-Closed の BLOCKED 経路を弱めません。
+- Sidekick、AI Governance Control、Ollama、Git が存在しない、または設定不備でも、`ai-dev-bootstrap` は context 上で `UNAVAILABLE` / `NOT_INITIALIZED` / `DEGRADED` と報告するだけです。Codex や Claude Code 自体の起動を妨げず、`.ai/RULES.md` や Fail-Closed の BLOCKED 経路を弱めません。
 
 **その他のコマンド:**
 
@@ -490,7 +484,7 @@ GitHub Actions では、実 Ollama 実行を別の manual workflow に分離し�
 - **Git Protection**: Local LLM は raw git command を実行しません。すべての Git operation は hardening された Python manager が実行し、`main` への push は block します。
 - **Runtime Task Data**: `.ai/TASK.md` / `.ai/RESULT.md` は ignore される runtime file です。version 管理する example は `templates/` 配下に置きます。Sidekick は既定ではこれらを commit しません。
 - **Task Data Isolation Recommendation**: このリポジトリが提供するのは Sidekick framework です。実際の proprietary project では、機密性のある task / result data をこの framework repository に commit せず、対象 project repository 側で Sidekick を構成してください。
-- **Independent Verification**: より強い evidence、phase contract、merge approval boundary が必要な場合は [AI Engineering Factory 連携](docs/factory-integration.md) を利用してください。
+- **Independent Verification**: より強い evidence、phase contract、merge approval boundary が必要な場合は [AI Governance Control 連携](docs/factory-integration.md) を利用してください。
 
 ---
 
@@ -508,4 +502,38 @@ GitHub Actions では、実 Ollama 実行を別の manual workflow に分離し�
 
 関連 project:
 
-- [AI Engineering Factory integration](docs/factory-integration.md) — 独立検証、phase contract、人間が承認する merge boundary
+- [AI Governance Control integration](docs/factory-integration.md) — 独立検証、phase contract、人間が承認する merge boundary
+
+---
+
+## Future Research — 実行時の信頼性と性能調査（2026-10-13）
+
+**状態：改善提案。未実装・未再現です。** 優先度は調査順で、リリース期限ではありません。
+
+### 出典と確認範囲
+
+- [OpenClaw and Ollama in Agentic AI: Toward Fully Autonomous and Scalable AI Agent Systems](https://arxiv.org/abs/2607.28629v1)（Roumeliotis / Sapkota）：[取得できた本文](https://www.researchgate.net/publication/411138539_OpenClaw_and_Ollama_in_Agentic_AI_Toward_Fully_Autonomous_and_Scalable_AI_Agent_Systems)の2〜4節を確認。推論・ランタイム・実行・メモリ・ガバナンスを分離しています。実験はホスト上で動作し、コンテナ隔離の実証ではありません。
+- [著者のコード・評価資料](https://github.com/Applied-AI-Research-Lab/OpenClaw-and-Ollama-in-Agentic-AI)：現在は入力情報を揃えた対照条件やメモリ漏洩補正が追加されています。取得できた本文の小規模実験と混ぜず、再現時はcommitを固定します。
+- [Accelerating Post-Quantum Cryptography via LLM-Driven Hardware-Software Co-Design](https://arxiv.org/html/2602.09410v1)（Liao / Adegbija / Lysecky）：プロファイル解析の進め方を参照。Ollama Workerの能力を検証した論文ではありません。
+
+以下は**本プロジェクト独自の応用案**です。「毎ターンのJSON Memory Anchor」は確認した本文で見つからなかったため、論文の手法として扱いません。モデル規模に依存しないという証明や、コーディング成功率の改善保証もありません。
+
+### 改善候補と完了条件
+
+| 優先度 | 改善案 | 採用前に必要な確認 |
+|---|---|---|
+| P1 | 既存Workerの責任境界を整理。Ollamaは型付きアクションを提案し、信頼された制御側が状態・認可・期限・コマンド実行を管理する | 許可外のコマンド・パス・権限変更を拒否し、実行操作を登録済み操作IDと実際の結果に対応づける |
+| P1 | バージョン付き状態チェックポイントを検討。タスク/要件版、目標、候補差分digest、適用時のTDD段階、直近の独立検証結果、次に許された操作ID、残予算を保持する | 古い・破損した・別タスクの状態では証拠を再利用できない。再開で予算をリセットせず、不明な副作用を照合してから再試行する。文書修正に架空のRED証拠を要求しない |
+| P2 | まずタスク内メモリを扱い、タスク間メモリには出典・有効期限・適用範囲を持たせる。取得内容は信頼されない入力とする | 目標の維持、古い要件、汚染メモ、タスク間混入を評価。メモリから認可・承認・受け入れテストを書き換えられない |
+| P2 | 同じモデル・入力・予算で、現行Worker、永続化なし、永続化あり、必要なら構造化チェックポイントありを比較する | 隔離と独立した正解判定を揃え、成功・実際のツール効果・復旧・範囲逸脱・遅延・再試行・コストを失敗も含めて記録。RESULTの自己申告だけで合格にしない |
+| P3 | ローカルモデルによるソース/性能ログ要約を試す。関数の参照先と実測根拠を併記する | ソースだけの予測は実測結果を隠して評価。ビルド・コンパイラ・負荷条件と順位一致を記録し、未測定値は不明とする。FPGAやクラウドの導入を自動推奨しない |
+
+### 既存構成との接続
+
+[既存のFactory連携](docs/factory-integration.md)を基礎にします。Leadが範囲を決め、Sidekickが候補を作り、AI Governance Controlが独立検証し、人がPRを確認します。ネイティブadapterやOpenClaw依存の採用は別の検討です。論文を参照しただけでランタイム導入済み・新プロトコル対応済みとはしません。
+
+**次の調査目標：** チェックポイント契約と少数の固定オフライン実装・復旧タスクを定義し、構成変更の前に再現可能なベースラインを残します。
+
+## Worker の役割分離計画（2026-10-15）
+
+**未実装の提案です。** [Worker role roadmap / 改修計画](docs/worker-role-roadmap.md)に、実行役・調査役・実装役の契約、導入順、現行コードの静的観察、比較評価の方法を記録しています。既存の Lead / Worker の安全境界と独立検証を維持します。
