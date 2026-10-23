@@ -537,3 +537,9 @@ GitHub Actions では、実 Ollama 実行を別の manual workflow に分離し�
 ## Worker の役割分離計画（2026-10-15）
 
 **未実装の提案です。** [Worker role roadmap / 改修計画](docs/worker-role-roadmap.md)に、実行役・調査役・実装役の契約、導入順、現行コードの静的観察、比較評価の方法を記録しています。既存の Lead / Worker の安全境界と独立検証を維持します。
+# ローカルセキュリティ監査の候補
+
+[合成ログによるオフライン実行手順](docs/security-audit.md)を追加しました。Home AI
+Engineering Lab の公開済み前処理・根拠検証を Sidekick に取り込んだ候補です。実ログや機密資料を
+入力せず、既存のローカル Ollama を使う場合だけ明示的に有効化してください。出力は人間の確認用で、
+自動修復やコマンド実行は行いません。実 GPU 推論と本番運用は未検証です。

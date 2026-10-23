@@ -16,6 +16,14 @@ A local AI coding worker powered by Ollama. It keeps planning and final review w
 
 The [Japanese guide](README.ja.md) contains the full workflow, configuration, platform integrations, troubleshooting, verification steps, and operating precautions.
 
+## Local security audit candidate
+
+The [security audit guide](docs/security-audit.md) shows an offline, synthetic-log
+example and an explicit opt-in path to an already installed local Ollama model.
+It adapts the public Home AI Engineering Lab preprocessor and evidence validator
+inside Sidekick. Real logs, production deployment and live GPU inference remain
+unverified. Reports are for human review; the audit CLI cannot run remediation.
+
 ## Requirements
 
 - Windows 10/11, macOS, or Linux
@@ -79,4 +87,4 @@ Build on [the existing Factory handoff](docs/factory-integration.md): Lead scope
 
 ## Planned Worker roles (2026-10-15)
 
-**Proposed; not implemented.** See the [Worker role roadmap](docs/worker-role-roadmap.md) for command-runner, code-explore and spec-coder contracts, staged adoption, current-code observations and evaluation criteria. The existing Lead/Worker safety boundary and independent verification remain in place. An English summary is included in the plan.
+**Candidate implementation (2026-10-23).** The explicit `code-explore` read-only path and bounded `spec-coder` edit path are available; `command-runner` records compact command observations. See the [Worker role guide](docs/worker-roles.md) for task format, limits and a synthetic example, and the [roadmap](docs/worker-role-roadmap.md) for remaining evaluation work. Local log retention and live Ollama/GPU validation remain open.

@@ -9,6 +9,7 @@ from typing import List
 @dataclass
 class TaskDefinition:
     task_id: str = ""
+    worker_role: str = "legacy"
     goal: str = ""
     background: str = ""
     allowed_files: List[str] = field(default_factory=list)
@@ -57,6 +58,7 @@ class TaskDefinition:
             task_id = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
         goal = extract_section("Goal")
+        worker_role = extract_section("Worker Role") or "legacy"
         background = extract_section("Background")
         allowed_files = extract_items(extract_section("Allowed Files"))
         forbidden_operations = extract_items(extract_section("Forbidden Operations"))
@@ -67,6 +69,7 @@ class TaskDefinition:
 
         return cls(
             task_id=task_id,
+            worker_role=worker_role,
             goal=goal,
             background=background,
             allowed_files=allowed_files,

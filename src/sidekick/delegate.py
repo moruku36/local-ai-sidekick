@@ -65,15 +65,19 @@ def _text(value):
 
 
 def _validate_task(root, task):
-    if not isinstance(task, dict) or set(task) - (set(SECTIONS) | {"task_id"}):
+    if not isinstance(task, dict) or set(task) - (set(SECTIONS) | {"task_id", "worker_role"}):
         raise ValueError("Task must contain only documented task fields.")
+    worker_role = task.get("worker_role", "legacy")
+    if worker_role not in {"legacy", "command-runner", "code-explore", "spec-coder"}:
+        raise ValueError("Unsupported Worker role.")
     for name in ("goal", "background"):
         if not _text(task.get(name)):
             raise ValueError(f"A concrete, single-line {name} is required.")
     for name in set(SECTIONS) - {"goal", "background"}:
         values = task.get(name, [] if name == "forbidden_operations" else None)
         if (not isinstance(values, list) or
-                (not values and name != "forbidden_operations") or
+                (not values and name != "forbidden_operations" and
+                 not (name == "allowed_commands" and worker_role == "code-explore")) or
                 not all(_text(v) for v in values)):
             raise ValueError(f"A nonempty list of single-line {name} is required.")
     policy = SecurityPolicy(root, task["allowed_files"], task["allowed_commands"])
@@ -98,6 +102,8 @@ def _validate_task(root, task):
     for command in task["allowed_commands"]:
         if command not in SAFE_COMMANDS or not policy.is_command_allowed(command)[0]:
             raise ValueError("Allowed Commands contains an unapproved command.")
+    if worker_role == "code-explore" and task["allowed_commands"]:
+        raise ValueError("code-explore cannot execute commands.")
     if "task_id" in task and not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}", task["task_id"]):
         raise ValueError("Task ID must be a safe branch-name component (max 80 characters).")
     plain = "\n".join(item for value in task.values()
@@ -143,6 +149,8 @@ def render_task(task):
     task_id = task.get("task_id") or "local-" + hashlib.sha256(canonical.encode()).hexdigest()[:24]
     values = dict(task, forbidden_operations=FORBIDDEN + task.get("forbidden_operations", []))
     blocks = ["# Current Task", f"## Task ID\n\n{task_id}"]
+    if "worker_role" in task:
+        blocks.append(f"## Worker Role\n\n{task['worker_role']}")
     for name, title in SECTIONS.items():
         value = values[name]
         body = "\n".join("- " + item for item in value) if isinstance(value, list) else value
