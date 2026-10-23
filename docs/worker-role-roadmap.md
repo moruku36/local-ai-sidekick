@@ -2,7 +2,7 @@
 
 Date / 記録日: **2026-10-15**
 
-Status / 状態: **Proposed, not implemented / 未実装の提案**
+Status: **Reporting slice implemented 2026-10-23; Worker role separation still proposed**
 
 ## 目的と出典
 
@@ -77,6 +77,13 @@ Lead が仕様・許可ファイル・受け入れ条件・検証コマンドを
 役割分割の効果を確認してから、モデル選定を別の判断として扱う。今回の文書追記には製品実装、製品テスト実行、モデル導入を含めない。今後の非設計作業は既存の Claude / Antigravity への委任方針に従い、今回の計画が自動で実装や Watcher 起動を許可することはない。
 
 ## English summary
+
+**2026-10-23 update:** The first reporting slice is implemented in `runner.py`:
+execution and verification observations are separate; empty suites, timeouts,
+blocked commands and zero-test output do not yield `SUCCESS`. RESULT omits raw
+command output. This does not implement a separate command-runner role, retained
+local log lifecycle, read-only code-explore or spec-coder. See the
+[security audit candidate](security-audit.md) for the separate log-analysis entrypoint.
 
 **2026-10-15 proposal; not implemented.** Inspired by the GENDA article linked above, specialize the existing Worker rather than replacing the Lead/Worker architecture. Preserve `LOCAL / LEAD / BLOCKED`, all file/command/Git guards, and AI Governance Control's independent verification. No new daemon or multi-stage orchestration platform is required.
 

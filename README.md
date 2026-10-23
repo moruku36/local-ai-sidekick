@@ -16,6 +16,14 @@ A local AI coding worker powered by Ollama. It keeps planning and final review w
 
 The [Japanese guide](README.ja.md) contains the full workflow, configuration, platform integrations, troubleshooting, verification steps, and operating precautions.
 
+## Local security audit candidate
+
+The [security audit guide](docs/security-audit.md) shows an offline, synthetic-log
+example and an explicit opt-in path to an already installed local Ollama model.
+It adapts the public Home AI Engineering Lab preprocessor and evidence validator
+inside Sidekick. Real logs, production deployment and live GPU inference remain
+unverified. Reports are for human review; the audit CLI cannot run remediation.
+
 ## Requirements
 
 - Windows 10/11, macOS, or Linux

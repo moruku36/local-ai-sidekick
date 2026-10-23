@@ -93,11 +93,12 @@ class SidekickRunner:
 
         return discovered_files, file_contents
 
-    def _run_verification_suite(self, commands: List[str], workspace: WorkspaceManager) -> Tuple[bool, List[str], List[str], str]:
-        """Runs candidate verification commands sequentially; returns (passed, commands_run, test_summaries, error_msg)."""
+    def _run_verification_suite(self, commands: List[str], workspace: WorkspaceManager) -> Tuple[bool, List[str], List[str], str, List[Dict[str, Any]]]:
+        """Observe approved commands; execution and verification are distinct facts."""
         commands_run = []
         test_summaries = []
-        all_passed = True
+        observations: List[Dict[str, Any]] = []
+        all_passed = False
         first_error = ""
 
         for cmd in commands:
@@ -106,14 +107,29 @@ class SidekickRunner:
             cmd_clean = cmd.strip()
             print(f"  -> Running: {cmd_clean}")
             code, stdout, stderr = workspace.run_command(cmd_clean)
-            commands_run.append(f"`{cmd_clean}` (exit code {code})")
-            test_summaries.append(f"Command: {cmd_clean}\nExit Code: {code}\nOutput: {stdout}\nErrors: {stderr}")
-            if code != 0:
+            execution = "TIMED_OUT" if code == 124 else "DID_NOT_RUN" if code in (126, 127) else "RAN"
+            zero_tests = any(
+                marker in stdout or marker in stderr
+                for marker in ("Ran 0 tests", "collected 0 items", "no tests ran")
+            )
+            verification = "UNVERIFIED" if zero_tests or execution != "RAN" else "PASSED" if code == 0 else "FAILED"
+            observations.append({
+                "command": cmd_clean,
+                "execution": execution,
+                "verification": verification,
+                "exit_code": code if execution == "RAN" else None,
+            })
+            commands_run.append(f"`{cmd_clean}` ({execution}, {verification})")
+            test_summaries.append(f"{cmd_clean}: {execution}, {verification}, exit={code if execution == 'RAN' else 'n/a'}")
+            if verification != "PASSED":
                 all_passed = False
-                first_error = f"Command failed: {cmd_clean}\n{stderr or stdout}"
+                first_error = f"Command not verified: {cmd_clean} ({execution}, {verification})"
                 break
+            all_passed = True
 
-        return all_passed, commands_run, test_summaries, first_error
+        if not observations:
+            first_error = "No verification command was executed."
+        return all_passed, commands_run, test_summaries, first_error, observations
 
     def execute(self) -> Dict[str, Any]:
         result_data = {
@@ -127,6 +143,8 @@ class SidekickRunner:
             "files_changed": [],
             "commands_executed": [],
             "test_results": "",
+            "verification_status": "UNVERIFIED",
+            "verification_observations": [],
             "errors": "",
             "remaining_issues": "",
             "decisions_required": "",
@@ -363,20 +381,20 @@ If you cannot safely proceed without violating rules or if design is ambiguous, 
         # Step 9: Lint / Test & Self-Fix Loop
         print("[9/12] Verifying implementation via allowed commands...")
         verification_suite = [c for c in task.allowed_commands if c.strip()]
-        if not verification_suite and plan.get("verification_command"):
-            verification_suite = [plan.get("verification_command")]
 
-        suite_passed, commands_run, test_summaries, failure_err = self._run_verification_suite(
+        suite_passed, commands_run, test_summaries, failure_err, observations = self._run_verification_suite(
             verification_suite, workspace
         )
 
         result_data["commands_executed"] = commands_run
-        result_data["test_results"] = "\n\n".join(test_summaries) if test_summaries else "No verification command was executed."
+        result_data["test_results"] = "\n".join(test_summaries) if test_summaries else "No verification command was executed."
+        result_data["verification_observations"] = observations
+        result_data["verification_status"] = "PASSED" if suite_passed else "UNVERIFIED" if not observations or observations[-1]["verification"] == "UNVERIFIED" else "FAILED"
         if not suite_passed:
             result_data["errors"] = failure_err
 
         # Self-fix loop if verification failed
-        if not suite_passed and self.config.max_retries > 0:
+        if not suite_passed and observations and self.config.max_retries > 0:
             print("[9.1/12] Self-fix iteration triggered...")
             for attempt in range(1, self.config.max_retries + 1):
                 print(f"  Attempt {attempt} of {self.config.max_retries}...")
@@ -404,11 +422,13 @@ If you cannot safely proceed without violating rules or if design is ambiguous, 
 
                     # Re-verify full test suite
                     print("  Re-running full verification suite...")
-                    full_passed, re_cmds, re_summaries, re_err = self._run_verification_suite(
+                    full_passed, re_cmds, re_summaries, re_err, re_observations = self._run_verification_suite(
                         verification_suite, workspace
                     )
                     result_data["commands_executed"].extend(re_cmds)
                     result_data["test_results"] += f"\n\n[Self-fix Attempt {attempt} Results]\n" + "\n\n".join(re_summaries)
+                    result_data["verification_observations"].extend(re_observations)
+                    result_data["verification_status"] = "PASSED" if full_passed else "UNVERIFIED" if not re_observations or re_observations[-1]["verification"] == "UNVERIFIED" else "FAILED"
 
                     if full_passed:
                         suite_passed = True
@@ -624,6 +644,16 @@ If you cannot safely proceed without violating rules or if design is ambiguous, 
 
 ```text
 {res.get("test_results", "None")}
+```
+
+## Verification Status
+
+{res.get("verification_status", "UNVERIFIED")}
+
+## Verification Observations
+
+```json
+{json.dumps(res.get("verification_observations", []), ensure_ascii=False, indent=2)}
 ```
 
 ## Errors

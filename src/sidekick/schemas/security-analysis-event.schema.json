@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SecurityAnalysisEvent",
+  "description": "Strict schema for structured security log analysis findings produced by deterministic rules and validated LLM analysis.",
+  "type": "object",
+  "required": [
+    "event_id",
+    "source",
+    "timestamp",
+    "event_type",
+    "severity",
+    "summary",
+    "evidence_refs",
+    "suspected_cause",
+    "recommended_actions",
+    "needs_human_review"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "description": "Unique deterministic identifier, format: sha256:[hex64] or rule-[name]-[hash8]",
+      "pattern": "^(sha256:[0-9a-f]{64}|rule-[a-z0-9_-]+-[0-9a-f]{8})$"
+    },
+    "source": {
+      "type": "string",
+      "description": "Log source component",
+      "enum": ["syslog", "docker", "sshd", "n8n", "ufw", "auth", "synthetic_test"]
+    },
+    "timestamp": {
+      "type": "string",
+      "description": "ISO 8601 UTC timestamp of occurrence or detection",
+      "format": "date-time"
+    },
+    "event_type": {
+      "type": "string",
+      "description": "Categorized event classification",
+      "enum": [
+        "auth_bruteforce",
+        "sudo_failure",
+        "privilege_escalation_attempt",
+        "unauthorized_access",
+        "container_anomaly",
+        "prompt_injection_attempt",
+        "network_scan",
+        "generic_anomaly"
+      ]
+    },
+    "severity": {
+      "type": "string",
+      "description": "Security impact severity level",
+      "enum": ["info", "low", "medium", "high", "critical"]
+    },
+    "summary": {
+      "type": "string",
+      "description": "Concise factual summary of the finding (10-300 chars)",
+      "minLength": 10,
+      "maxLength": 300
+    },
+    "evidence_refs": {
+      "type": "array",
+      "description": "Direct references to preprocessed raw input log lines. Hallucinated lines not present in input are strictly rejected.",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["line_no", "raw_hash", "log_excerpt"],
+        "additionalProperties": false,
+        "properties": {
+          "line_no": {
+            "type": "integer",
+            "description": "1-based line number in preprocessed input chunk",
+            "minimum": 1
+          },
+          "raw_hash": {
+            "type": "string",
+            "description": "Short 8-character hex SHA-256 of the redacted log line",
+            "pattern": "^[0-9a-f]{8}$"
+          },
+          "log_excerpt": {
+            "type": "string",
+            "description": "Exact excerpt from the redacted log line (max 200 chars)",
+            "maxLength": 200
+          }
+        }
+      }
+    },
+    "suspected_cause": {
+      "type": "string",
+      "description": "Factual explanation of the root cause or pattern detected",
+      "minLength": 5,
+      "maxLength": 500
+    },
+    "recommended_actions": {
+      "type": "array",
+      "description": "Actionable recommendations for human administrator review (no automated execution)",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 5,
+        "maxLength": 200
+      }
+    },
+    "needs_human_review": {
+      "type": "boolean",
+      "description": "Must be true for high/critical severities, prompt injections, or LLM-derived suggestions"
+    }
+  }
+}
