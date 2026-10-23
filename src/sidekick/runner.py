@@ -1,4 +1,5 @@
 """Orchestrator runner for Local AI Sidekick (supporting Phase 1 and Phase 2)."""
+import ast
 import hashlib
 import json
 import re
@@ -515,14 +516,18 @@ must be exact Allowed Files. No commands from the model will be executed.
                 return result_data
             result_data["spec_unverified_claims"] = plan.get("unverified_claims", [])
 
+        # Reject malformed Python in the entire batch before any file is written.
+        prepared_edits, edit_error = self._prepare_file_edits(plan, workspace)
+        if edit_error:
+            result_data["status"] = "BLOCKED"
+            result_data["automation_status"] = "BLOCKED"
+            result_data["errors"] = edit_error
+            self._write_result(result_data)
+            return result_data
+
         # Apply file edits
         changed_files = []
-        for file_entry in plan.get("files_to_write", []):
-            rel = file_entry.get("path")
-            content = (file_entry["content"] if task.worker_role == "spec-coder"
-                       else self._normalize_content(file_entry.get("content", "")))
-            if not rel:
-                continue
+        for rel, content in prepared_edits:
             try:
                 workspace.write_file(rel, content)
                 changed_files.append(rel)
@@ -578,7 +583,7 @@ must be exact Allowed Files. No commands from the model will be executed.
                             fix_plan = None
                     else:
                         fix_plan = self._extract_json(fix_resp)
-                    if not fix_plan:
+                    if not isinstance(fix_plan, dict) or not fix_plan:
                         break
                     if task.worker_role == "spec-coder":
                         reason = validate_spec_plan(self.repo_root, task, self.config, fix_plan)
@@ -589,10 +594,14 @@ must be exact Allowed Files. No commands from the model will be executed.
                             self._write_result(result_data)
                             return result_data
                         result_data["spec_unverified_claims"] = fix_plan.get("unverified_claims", [])
-                    for file_entry in fix_plan.get("files_to_write", []):
-                        rel = file_entry.get("path")
-                        content = (file_entry["content"] if task.worker_role == "spec-coder"
-                                   else self._normalize_content(file_entry.get("content", "")))
+                    prepared_fix, fix_error = self._prepare_file_edits(fix_plan, workspace)
+                    if fix_error:
+                        result_data["status"] = "BLOCKED"
+                        result_data["automation_status"] = "BLOCKED"
+                        result_data["errors"] = fix_error
+                        self._write_result(result_data)
+                        return result_data
+                    for rel, content in prepared_fix:
                         workspace.write_file(rel, content)
                         if rel not in changed_files:
                             changed_files.append(rel)
@@ -766,14 +775,33 @@ must be exact Allowed Files. No commands from the model will be executed.
                     pass
         return None
 
-    def _normalize_content(self, content: str) -> str:
-        """Handles potential escaped newlines from raw JSON string output."""
-        if "\n" not in content and "\\n" in content:
-            try:
-                return bytes(content, "utf-8").decode("unicode_escape")
-            except Exception:
-                return content.replace("\\n", "\n").replace("\\t", "\t")
-        return content
+    def _prepare_file_edits(
+        self, plan: Dict[str, Any], workspace: WorkspaceManager
+    ) -> Tuple[List[Tuple[str, str]], str]:
+        """Validate proposed file contents without running or rewriting generated code."""
+        entries = plan.get("files_to_write", [])
+        if not isinstance(entries, list) or len(entries) > self.config.max_files:
+            return [], "Model edit batch is invalid or too large; no files were written."
+        prepared: List[Tuple[str, str]] = []
+        seen: set[str] = set()
+        for entry in entries:
+            if not isinstance(entry, dict):
+                return [], "Model edit batch contains an invalid entry; no files were written."
+            rel, content = entry.get("path"), entry.get("content")
+            if (not isinstance(rel, str) or not rel or not isinstance(content, str)
+                    or len(content.encode("utf-8")) > self.config.max_file_bytes
+                    or rel in seen):
+                return [], "Model edit batch contains an invalid entry; no files were written."
+            if not workspace.security_policy.is_path_allowed(rel)[0]:
+                return [], "Model edit batch exceeds Allowed Files; no files were written."
+            if rel.lower().endswith(".py"):
+                try:
+                    ast.parse(content, filename=rel)
+                except (SyntaxError, ValueError):
+                    return [], "Model proposed invalid Python syntax; no files were written."
+            seen.add(rel)
+            prepared.append((rel, content))
+        return prepared, ""
 
     def _write_result(self, res: Dict[str, Any]) -> None:
         target = self.repo_root / self.config.result_path

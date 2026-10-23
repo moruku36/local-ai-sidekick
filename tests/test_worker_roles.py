@@ -8,7 +8,9 @@ from unittest.mock import patch
 
 from sidekick.config import SidekickConfig
 from sidekick.runner import SidekickRunner
+from sidekick.security import SecurityPolicy
 from sidekick.task_parser import TaskDefinition
+from sidekick.workspace import WorkspaceManager
 
 WORKSPACE = Path(__file__).resolve().parents[2]
 COMMAND = "python -m compileall -q src"
@@ -110,6 +112,37 @@ class WorkerRoleTests(unittest.TestCase):
             result = self.runner.execute()
         self.assertEqual(result["status"], "BLOCKED")
         self.assertIn("local Ollama", result["errors"])
+
+    def test_invalid_generated_python_is_blocked_before_write_or_test(self):
+        self.config.auto_git = False
+        self.runner.ollama.check_health = lambda: True
+        self.runner.ollama.is_model_available = lambda _: True
+        invalid = "self.assertEqual(capitalize to 'Hello world')"
+        self.runner.ollama.chat_complete = lambda *args, **kwargs: json.dumps({
+            "status": "SUCCESS", "summary": "Synthetic proposal",
+            "files_to_write": [{"path": "src/one.py", "content": invalid}],
+            "verification_command": COMMAND, "decisions_required": "",
+        })
+        before = (self.root / "src" / "one.py").read_bytes()
+        for role in ("legacy", "spec-coder"):
+            with self.subTest(role=role):
+                self.task(role)
+                with patch.object(self.runner.git_manager, "get_current_branch", return_value="local"):
+                    with patch.object(WorkspaceManager, "write_file", side_effect=AssertionError("write called")):
+                        with patch.object(WorkspaceManager, "run_command", side_effect=AssertionError("test called")):
+                            result = self.runner.execute()
+                self.assertEqual(result["status"], "BLOCKED")
+                self.assertIn("invalid Python syntax", result["errors"])
+                self.assertEqual((self.root / "src" / "one.py").read_bytes(), before)
+
+    def test_json_content_with_literal_escape_is_preserved(self):
+        literal = 'VALUE = "\\n"'
+        raw = json.dumps({"files_to_write": [{"path": "src/one.py", "content": literal}]})
+        plan = self.runner._extract_json(raw)
+        workspace = WorkspaceManager(self.root, SecurityPolicy(self.root, ["src/one.py"], []))
+        edits, error = self.runner._prepare_file_edits(plan, workspace)
+        self.assertEqual(error, "")
+        self.assertEqual(edits, [("src/one.py", literal)])
 
     def test_command_runner_records_observation_without_model_or_git(self):
         self.task("command-runner")
