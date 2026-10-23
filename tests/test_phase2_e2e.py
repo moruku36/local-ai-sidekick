@@ -78,7 +78,10 @@ class TestPhase2E2E(unittest.TestCase):
                 "goal": "Implement capitalize_text(text) in src/cap.py using str.capitalize().",
                 "background": "Add a small pure string helper with no external dependencies.",
                 "allowed_files": ["src/cap.py", "tests/test_cap.py"],
-                "requirements": ["Use standard library unittest to test capitalize_text in tests/test_cap.py."],
+                "requirements": [
+                    "Create src/cap.py and tests/test_cap.py if they are absent; return full source in files_to_write.",
+                    "Use standard library unittest to test capitalize_text in tests/test_cap.py.",
+                ],
                 "acceptance_criteria": ["Empty input returns empty; hello WORLD returns Hello world; all unit tests pass."],
                 "allowed_commands": ["python -m unittest discover tests"],
                 "review_points": ["Check implementation, test assertions, file scope and no dependencies."],
