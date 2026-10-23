@@ -84,6 +84,28 @@ class WorkerRoleTests(unittest.TestCase):
         self.assertEqual(result["status"], "BLOCKED")
         self.assertEqual((self.root / "src" / "one.py").read_bytes(), before)
 
+    def test_missing_allowed_file_is_explicitly_creatable_in_prompt(self):
+        self.task("spec-coder", files=["src/new.py"])
+        self.config.auto_git = False
+        self.runner.ollama.check_health = lambda: True
+        self.runner.ollama.is_model_available = lambda _: True
+        seen = []
+
+        def respond(*args, **kwargs):
+            seen.append(kwargs.get("messages", args[1] if len(args) > 1 else []))
+            return json.dumps({"status": "BLOCKED", "summary": "Synthetic stop",
+                               "files_to_write": [], "decisions_required": "Test stop"})
+
+        self.runner.ollama.chat_complete = respond
+        with patch.object(self.runner.git_manager, "get_current_branch", return_value="local"):
+            result = self.runner.execute()
+        self.assertTrue(seen, result)
+        prompt = seen[0][1]["content"]
+        self.assertIn("(File does not exist yet - new file)", prompt)
+        self.assertIn("If the task requires a missing path listed in Allowed Files", prompt)
+        self.assertIn("its full new content in files_to_write", prompt)
+        self.assertIn("Never create or modify a path outside Allowed Files", prompt)
+
     def test_spec_valid_batch_records_actual_verification(self):
         self.task("spec-coder")
         self.config.auto_git = False

@@ -433,6 +433,10 @@ FILE CONTENTS:
 INSTRUCTION:
 Produce a single strictly valid JSON response containing the implementation plan and file edits.
 Do NOT include markdown formatting or conversational text outside the JSON.
+If the task requires a missing path listed in Allowed Files, include that path and
+its full new content in files_to_write. The runner creates it after safety checks;
+no additional file-creation instruction is needed. The "File does not exist yet"
+context marker is not a prohibition. Never create or modify a path outside Allowed Files.
 Schema:
 {{
   "status": "SUCCESS" | "BLOCKED",
