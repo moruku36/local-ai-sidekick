@@ -144,6 +144,16 @@ class WorkerRoleTests(unittest.TestCase):
         self.assertEqual(error, "")
         self.assertEqual(edits, [("src/one.py", literal)])
 
+    def test_malformed_model_edit_is_rejected_without_writing(self):
+        workspace = WorkspaceManager(self.root, SecurityPolicy(self.root, ["src/one.py"], []))
+        for path, content in (("src/one.py\x00", "pass"), ("src/one.py", "\ud800")):
+            with self.subTest(path=path):
+                edits, error = self.runner._prepare_file_edits(
+                    {"files_to_write": [{"path": path, "content": content}]}, workspace
+                )
+                self.assertEqual(edits, [])
+                self.assertIn("invalid entry", error)
+
     def test_command_runner_records_observation_without_model_or_git(self):
         self.task("command-runner")
         with patch.object(self.runner.git_manager, "preflight_check", side_effect=AssertionError("Git called")):

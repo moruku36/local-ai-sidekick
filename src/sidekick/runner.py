@@ -789,15 +789,19 @@ must be exact Allowed Files. No commands from the model will be executed.
                 return [], "Model edit batch contains an invalid entry; no files were written."
             rel, content = entry.get("path"), entry.get("content")
             if (not isinstance(rel, str) or not rel or not isinstance(content, str)
-                    or len(content.encode("utf-8")) > self.config.max_file_bytes
-                    or rel in seen):
+                    or len(content) > self.config.max_file_bytes or rel in seen):
                 return [], "Model edit batch contains an invalid entry; no files were written."
-            if not workspace.security_policy.is_path_allowed(rel)[0]:
-                return [], "Model edit batch exceeds Allowed Files; no files were written."
+            try:
+                content_bytes = len(content.encode("utf-8"))
+                path_allowed = workspace.security_policy.is_path_allowed(rel)[0]
+            except (UnicodeError, ValueError, OSError):
+                return [], "Model edit batch contains an invalid entry; no files were written."
+            if content_bytes > self.config.max_file_bytes or not path_allowed:
+                return [], "Model edit batch exceeds file scope or size; no files were written."
             if rel.lower().endswith(".py"):
                 try:
                     ast.parse(content, filename=rel)
-                except (SyntaxError, ValueError):
+                except (SyntaxError, UnicodeError, ValueError):
                     return [], "Model proposed invalid Python syntax; no files were written."
             seen.add(rel)
             prepared.append((rel, content))
