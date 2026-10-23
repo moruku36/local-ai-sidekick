@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from pathlib import Path, PureWindowsPath
-from ipaddress import ip_address
 import re
+from ipaddress import ip_address
+from pathlib import Path, PureWindowsPath
 from typing import Any
 from urllib.parse import urlsplit
 

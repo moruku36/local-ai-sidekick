@@ -18,7 +18,7 @@ import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional
 
 # Patterns for secret and PII redaction
 TOKEN_PATTERNS = [
@@ -200,9 +200,9 @@ def detect_deterministic_rules(entries: List[Dict[str, Any]]) -> List[Dict[str, 
                 "evidence_refs": refs,
                 "suspected_cause": f"Potential brute-force or credential stuffing against user accounts from source {ip}",
                 "recommended_actions": [
-                    f"Check UFW firewall rules to ensure port 22 is restricted to trusted LAN only",
-                    f"Confirm SSH public key only authentication is enforced (PasswordAuthentication no)",
-                    f"Inspect auth.log for further activity"
+                    "Check UFW firewall rules to ensure port 22 is restricted to trusted LAN only",
+                    "Confirm SSH public key only authentication is enforced (PasswordAuthentication no)",
+                    "Inspect auth.log for further activity"
                 ],
                 "needs_human_review": True
             })
@@ -228,7 +228,7 @@ def detect_deterministic_rules(entries: List[Dict[str, Any]]) -> List[Dict[str, 
                 "suspected_cause": f"User '{user}' entered incorrect credentials or attempted unauthorized privilege escalation",
                 "recommended_actions": [
                     f"Verify whether user '{user}' is authorized in sudoers",
-                    f"Review preceding terminal sessions or SSH logs"
+                    "Review preceding terminal sessions or SSH logs"
                 ],
                 "needs_human_review": True
             })
@@ -245,7 +245,7 @@ def detect_deterministic_rules(entries: List[Dict[str, Any]]) -> List[Dict[str, 
                     "timestamp": entry["timestamp"],
                     "event_type": "prompt_injection_attempt",
                     "severity": "high",
-                    "summary": f"Detected potential adversarial prompt injection payload embedded inside log stream",
+                    "summary": "Detected potential adversarial prompt injection payload embedded inside log stream",
                     "evidence_refs": [{
                         "line_no": entry["line_no"],
                         "raw_hash": entry["raw_hash"],

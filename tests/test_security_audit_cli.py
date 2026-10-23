@@ -10,7 +10,6 @@ from unittest.mock import patch
 
 from sidekick import security_audit
 
-
 FIXTURE = Path(__file__).parent / "fixtures" / "security_audit" / "synthetic-auth.txt"
 
 

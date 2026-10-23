@@ -5,13 +5,11 @@ Zero real network calls, zero GPU inference, zero external credentials.
 
 from __future__ import annotations
 
-import copy
 import contextlib
+import copy
 import io
-from pathlib import Path
 import unittest
 
-ROOT = Path(__file__).resolve().parents[1]
 from sidekick import security_log_pipeline as pipeline
 
 
@@ -209,11 +207,13 @@ class SecurityPipelineRegressionTests(unittest.TestCase):
         ]
         for field, value in cases:
             with self.subTest(field=field, value=value):
-                event = self.event(); event[field] = value
+                event = self.event()
+                event[field] = value
                 with self.assertRaises(ValueError):
                     pipeline.validate_schema(event)
         for field in self.event():
-            event = self.event(); del event[field]
+            event = self.event()
+            del event[field]
             with self.subTest(missing=field), self.assertRaises(ValueError):
                 pipeline.validate_schema(event)
         for invalid in (None, [], "text", {**self.event(), "extra": True}):
@@ -226,10 +226,12 @@ class SecurityPipelineRegressionTests(unittest.TestCase):
             ("raw_hash", 123), ("log_excerpt", "x" * 201), ("log_excerpt", None),
         ]]
         for ref in bad_refs:
-            event = self.event(); event["evidence_refs"] = [ref]
+            event = self.event()
+            event["evidence_refs"] = [ref]
             with self.subTest(ref=ref), self.assertRaises(ValueError):
                 pipeline.validate_schema(event)
-        event = self.event(); event["event_id"] = "sha256:" + "a" * 64
+        event = self.event()
+        event["event_id"] = "sha256:" + "a" * 64
         event["timestamp"] = "2026-01-01T01:02:03.123+00:00"
         pipeline.validate_schema(event)
 
@@ -242,14 +244,16 @@ class SecurityPipelineRegressionTests(unittest.TestCase):
     def test_human_review_policy(self):
         for field, value in [("severity", "high"), ("severity", "critical"),
                              ("event_type", "prompt_injection_attempt")]:
-            event = self.event(); event[field] = value
+            event = self.event()
+            event[field] = value
             with self.assertRaises(ValueError):
                 pipeline.validate_schema(event)
             event["needs_human_review"] = True
             pipeline.validate_schema(event)
         for severity in ("info", "low", "medium", "high", "critical"):
             def invoke(chunk):
-                event = self.event(chunk[0]); event["severity"] = severity
+                event = self.event(chunk[0])
+                event["severity"] = severity
                 event["needs_human_review"] = severity in {"high", "critical"}
                 return [event]
             result = pipeline.process_pipeline(["synthetic harmless entry"], llm_invoker=invoke)

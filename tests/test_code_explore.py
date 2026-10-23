@@ -10,7 +10,6 @@ from sidekick.code_explore import run_code_explore
 from sidekick.config import SidekickConfig
 from sidekick.task_parser import TaskDefinition
 
-
 WORKSPACE = Path(__file__).resolve().parents[2]
 
 

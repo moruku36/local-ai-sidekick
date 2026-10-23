@@ -10,7 +10,6 @@ from sidekick.config import SidekickConfig
 from sidekick.runner import SidekickRunner
 from sidekick.task_parser import TaskDefinition
 
-
 WORKSPACE = Path(__file__).resolve().parents[2]
 COMMAND = "python -m compileall -q src"
 

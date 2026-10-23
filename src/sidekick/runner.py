@@ -8,8 +8,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from .config import SidekickConfig
 from .code_explore import run_code_explore
+from .config import SidekickConfig
 from .git_manager import GitAutomationManager
 from .ollama_client import OllamaClient
 from .role_contract import validate_role_task, validate_spec_plan
