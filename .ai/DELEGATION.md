@@ -40,6 +40,10 @@ For LOCAL require `risk: low`, `ambiguous: false`, and
    each text field/list item on one line. No secrets, unrestricted directories,
    glob patterns, shell snippets, or changes to workflow/instruction files.
    Forbidden Operations is optional: helper always includes mandatory prohibitions.
+   When the task requires a new file, name that file in Requirements and say to
+   create it if absent by returning its full content in `files_to_write`.
+   Allowed Files authorizes the path but does not by itself state that creation
+   is required. Do not infer permission to create any other file.
 3. Write assessment JSON to a temporary path **outside the target repository**
    (UTF-8, not versioned). Never persist credentials, including in the assessment.
 4. Install the Sidekick package once (`python -m pip install -e .`) and run:
