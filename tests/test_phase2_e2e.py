@@ -4,11 +4,13 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from sidekick.config import SidekickConfig
 from sidekick.delegate import submit
 from sidekick.state_manager import SidekickState
 from sidekick.watcher import TaskWatcher
+from sidekick.workspace import WorkspaceManager
 
 
 @unittest.skipUnless(
@@ -16,6 +18,19 @@ from sidekick.watcher import TaskWatcher
     "Real Ollama E2E is opt-in; set SIDEKICK_RUN_REAL_OLLAMA_E2E=true",
 )
 class TestPhase2E2E(unittest.TestCase):
+    def run_with_command_diagnostics(self, watcher):
+        """Keep synthetic command errors in test diagnostics, not runtime RESULT."""
+        observed = []
+        original = WorkspaceManager.run_command
+
+        def capture(workspace, command, timeout_seconds=60):
+            result = original(workspace, command, timeout_seconds)
+            observed.append(result)
+            return result
+
+        with patch.object(WorkspaceManager, "run_command", capture):
+            return watcher.run_once(), observed
+
     def setUp(self):
         self.root_dir = Path(tempfile.mkdtemp())
         self.remote_dir = Path(tempfile.mkdtemp())
@@ -74,13 +89,13 @@ class TestPhase2E2E(unittest.TestCase):
         task_id = queued["task_id"]
         self.assertEqual(submit(self.project_dir, request)["status"], "ALREADY_QUEUED")
         config = SidekickConfig.load(self.project_dir)
-        config.model = "qwen2.5:14b"
+        config.model = os.environ.get("SIDEKICK_E2E_MODEL", "qwen2.5:14b")
         config.auto_branch = config.auto_commit = config.auto_push = True
         config.commit_result_file = True
         config.require_clean_git = True
         watcher = TaskWatcher(self.project_dir, config)
-        outcome = watcher.run_once()
-        self.assertEqual(outcome["status"], "SUCCESS")
+        outcome, observed = self.run_with_command_diagnostics(watcher)
+        self.assertEqual(outcome["status"], "SUCCESS", f"{outcome.get('errors')} / {observed[-1][1:] if observed else 'no command'}")
         self.assertEqual(outcome["automation_status"], "READY_FOR_REVIEW")
         self.assertEqual(outcome["branch"], "ai/" + task_id)
         self.assertEqual(outcome["push_status"], "SUCCESS")
@@ -134,7 +149,7 @@ We need to capitalize strings in src/cap.py.
 
         # 2. Configure watcher / runner
         config = SidekickConfig.load(self.project_dir)
-        config.model = "qwen2.5:14b"
+        config.model = os.environ.get("SIDEKICK_E2E_MODEL", "qwen2.5:14b")
         config.auto_git = True
         config.auto_branch = True
         config.auto_commit = True
@@ -145,9 +160,9 @@ We need to capitalize strings in src/cap.py.
         watcher = TaskWatcher(repo_root=self.project_dir, config=config)
 
         # 3. Trigger single watcher cycle
-        res = watcher.run_once()
+        res, observed = self.run_with_command_diagnostics(watcher)
         self.assertIsNotNone(res)
-        self.assertEqual(res.get("status"), "SUCCESS")
+        self.assertEqual(res.get("status"), "SUCCESS", f"{res.get('errors')} / {observed[-1][1:] if observed else 'no command'}")
         self.assertEqual(res.get("automation_status"), "READY_FOR_REVIEW")
         self.assertEqual(res.get("branch"), "ai/e2e-task-001")
         self.assertTrue(len(res.get("commit_hash", "")) > 0)
