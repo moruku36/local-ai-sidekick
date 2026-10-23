@@ -2,7 +2,7 @@
 
 Date / 記録日: **2026-10-15**
 
-Status: **Reporting slice implemented 2026-10-23; Worker role separation still proposed**
+Status: **Candidate role paths implemented 2026-10-23; live validation and log retention remain open**
 
 ## 目的と出典
 
@@ -78,14 +78,17 @@ Lead が仕様・許可ファイル・受け入れ条件・検証コマンドを
 
 ## English summary
 
-**2026-10-23 update:** The first reporting slice is implemented in `runner.py`:
-execution and verification observations are separate; empty suites, timeouts,
-blocked commands and zero-test output do not yield `SUCCESS`. RESULT omits raw
-command output. This does not implement a separate command-runner role, retained
-local log lifecycle, read-only code-explore or spec-coder. See the
-[security audit candidate](security-audit.md) for the separate log-analysis entrypoint.
+**2026-10-23 candidate update:** Explicit roles now dispatch through distinct
+runtime paths. `command-runner` observes approved commands without a model or
+Git automation, but does not retain detailed logs. `code-explore` uses a
+bounded read-only source path and validates cited line excerpts. `spec-coder`
+checks the entire model edit batch before writing and records implementation
+separately from verification. Empty suites, timeouts, blocked commands and
+zero-test output do not yield `SUCCESS`. See the [role guide](worker-roles.md)
+and [security audit candidate](security-audit.md). Synthetic tests pass; real
+Ollama/GPU behavior and independent task success remain unverified.
 
-**2026-10-15 proposal; not implemented.** Inspired by the GENDA article linked above, specialize the existing Worker rather than replacing the Lead/Worker architecture. Preserve `LOCAL / LEAD / BLOCKED`, all file/command/Git guards, and AI Governance Control's independent verification. No new daemon or multi-stage orchestration platform is required.
+**2026-10-15 proposal and acceptance criteria.** Inspired by the GENDA article linked above, specialize the existing Worker rather than replacing the Lead/Worker architecture. Preserve `LOCAL / LEAD / BLOCKED`, all file/command/Git guards, and AI Governance Control's independent verification. No new daemon or multi-stage orchestration platform is required.
 
 1. Start with **command-runner**: trusted Python executes only approved commands, observes execution and verification separately, retains detailed logs locally, and returns a compact structured report. Distinguish ran, did not run, timeout, passed, failed, unverified and justified not-applicable cases. Command execution can have test/build side effects; it is not OS-level read-only isolation.
 2. Add **code-explore**: enforce read/search-only capabilities in the runtime, denying edits and Git mutations. Separate cited facts, inferences, search scope and uncovered areas; Lead checks evidence before relying on it. A role label alone cannot turn today's bulk allowed-file reading and implementation-JSON path into a read-only explorer.
