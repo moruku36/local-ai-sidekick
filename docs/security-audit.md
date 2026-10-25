@@ -1,5 +1,7 @@
 # Local security audit candidate
 
+[Documentation index](README.md) | [Current status](current-status.md)
+
 This candidate brings the public, offline security log pipeline from
 [`home-ai-engineering-lab`](https://github.com/moruku36/home-ai-engineering-lab/tree/e529c702ab7dcd74285d72a5991b5553c50d23a3)
 into Sidekick. The source pipeline and schema are adapted from that repository's
@@ -56,14 +58,14 @@ $env:PYTHONPATH='src'
 python -m unittest tests.test_security_audit tests.test_security_audit_cli -v
 ```
 
-The Worker roadmap's first reporting change is in `runner.py`: an empty
-verification suite, a timeout, a blocked command or a zero-test unittest/pytest
-run cannot become `SUCCESS`. RESULT now separates execution and verification
-observations and omits raw command output. This is a bounded first step toward
-the proposed command-runner role, **not** the complete role separation or a
-claim of OS-level read-only isolation. `code-explore` and `spec-coder` remain
-proposed. Local GPU offload, model quality, prompt-injection resilience on a
-live model, and production ingestion have not been measured or accepted.
+Verification reporting in `runner.py` separates execution from verification:
+an empty suite, timeout, blocked command or zero-test unittest/pytest run cannot
+become `SUCCESS`, and RESULT omits raw command output. Separate candidate paths
+for `command-runner`, `code-explore` and `spec-coder` are described in
+[Worker roles](worker-roles.md). Detailed local command-log retention remains open.
+None of this provides OS-level read-only isolation. Local GPU offload, live model
+quality, prompt-injection resilience and production ingestion have not been
+measured or accepted here.
 
 Before any real-log or production use, review data classification and retention,
 validate redaction against representative private samples in an approved

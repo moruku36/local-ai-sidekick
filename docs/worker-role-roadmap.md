@@ -1,5 +1,9 @@
 # Worker role roadmap / Worker の役割分離計画
 
+[Documentation index](README.md) | [Current role guide](worker-roles.md)
+
+Historical planning document: the static observations below refer to `309a0dc`, not current main. Candidate role paths and verification reporting have since been implemented. Remaining proposals (including detailed local log retention and live evaluation) are not completed features.
+
 Date / 記録日: **2026-10-15**
 
 Status: **Candidate role paths implemented 2026-10-23; live validation and log retention remain open**
@@ -17,7 +21,7 @@ Status: **Candidate role paths implemented 2026-10-23; live validation and log r
 - Allowed Files / Commands、パス制約、出力の秘密情報対策、diff guard、secret scan、Git の境界を維持する。role は権限を広げる手段ではない。自動 push の既定値や人の merge 権限も変えない。
 - [AI Governance Control の独立検証](factory-integration.md)は維持する。Worker の報告やローカルでの合格だけでは独立した合格証拠にならない。
 
-## 現行コードの静的観察
+## 過去のコードの静的観察（309a0dc）
 
 確認基準: `309a0dc`（参照時の main）。対象は [runner.py](../src/sidekick/runner.py) と [workspace.py](../src/sidekick/workspace.py)。以下は読解による観察であり、再現試験は実施していない。
 

@@ -1,5 +1,7 @@
 # Explicit Worker roles (candidate)
 
+[Documentation index](README.md) | [Current status](current-status.md)
+
 The Lead first applies `.ai/DELEGATION.md` and fixes the scope. Add `## Worker Role` to `.ai/TASK.md` (or `worker_role` to a delegated task request). Accepted values are `command-runner`, `code-explore`, and `spec-coder`; an omitted role uses the previous worker path. All explicit roles require a safe task ID, a concrete goal/background and exact, unprotected `Allowed Files` paths. `spec-coder` also requires requirements, acceptance criteria and review points. The delegation gate accepts only its small reviewed command set.
 
 | Role | Runtime capability | Report |

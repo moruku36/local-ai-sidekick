@@ -1,5 +1,7 @@
 # AI Governance Control Integration
 
+[Documentation index](README.md) | [Current status](current-status.md)
+
 Local AI Sidekick and [AI Governance Control](https://github.com/moruku36/ai-governance-control) solve different problems and are intended to be composed rather than merged into one runtime.
 
 ## Responsibility split

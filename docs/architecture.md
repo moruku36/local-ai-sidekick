@@ -1,8 +1,12 @@
-# Architecture Document: Local AI Sidekick (v1.0)
+# Architecture: the existing coding Worker
+
+[Documentation index](README.md) | [Current status](current-status.md)
+
+This document describes the existing coding Worker design, with historical Phase 1/2 terminology. It is one candidate use of the local GPU, not the project-wide strategy. Current runtime capabilities and validation limits are recorded in the status and role guides.
 
 ## 1. Overview
 
-Local AI Sidekick is designed to drastically reduce expensive cloud/frontier AI token consumption by establishing a strict separation of concerns between high-level architectural reasoning and local execution:
+The coding Worker separates Lead judgment from bounded local execution. Cloud-token reduction was an original motivation, not a measured or guaranteed outcome. The broader project now explores useful supporting jobs for an RTX 3070:
 
 - **Lead AI**: Operates at the architectural level, producing tasks, defining boundaries, and performing final code reviews.
 - **Local Sidekick**: Operates locally within the repository, performing local exploration, code modifications, testing, self-fixing, and structured result generation.
@@ -50,7 +54,7 @@ flowchart TD
     H -->|shared exclusive lock + atomic replace| T[.ai/TASK.md]
     T --> W[Existing Watcher]
     W --> O[Ollama: implementation / tests / self-fix]
-    O --> G[Diff Guard / Secret Scan / Safe Commit and Push]
+    O --> G[Diff Guard / Secret Scan / Optional Git automation]
     G --> R[RESULT.md + ai/task-id + READY_FOR_REVIEW]
     R --> D
 ```
@@ -90,65 +94,13 @@ An unfinished task cannot be overwritten; a terminal task requires explicit
 trigger delegation. Stale locks are not stolen on timeout; recovery requires
 verifying the owner stopped. State saves are atomic to avoid partial JSON.
 
-See [README: Automatic Delegation](../README.md#automatic-delegation) for startup,
+See [the operating guide](usage.ja.md#自動委譲) for startup,
 disable controls, host setup and troubleshooting. Queueing does not start a
 Watcher, change Git settings, merge code or grant production/cloud permissions.
 
 ## 2. Directory Structure
 
-```text
-local-ai-sidekick/
-├── AGENTS.md              # Lead entrypoint (Codex/Astra-compatible hosts)
-├── CLAUDE.md              # Lead entrypoint for Claude Code (imports AGENTS.md + policy)
-├── SECURITY.md            # Security policy, threat boundaries & disclosure
-├── .ai/
-│   ├── RULES.md           # Immutable security & behavior rules
-│   ├── DECISIONS.md       # Architecture Decision Records (ADRs)
-│   ├── DELEGATION.md      # Lead delegation policy & decision matrix
-│   └── (TASK.md/RESULT.md)# Runtime ephemeral task/result files (not tracked)
-├── templates/
-│   ├── TASK.example.md    # Reusable task specification template
-│   └── RESULT.example.md  # Reusable task execution result template
-├── prompts/
-│   └── sidekick-system.md # System prompt reinforcing Worker mindset
-├── scripts/
-│   ├── run-sidekick.ps1   # PowerShell runner for Windows environments
-│   ├── run-sidekick       # Bash runner for Linux/macOS
-│   ├── run-real-e2e.py    # Dedicated real Ollama E2E validation runner
-│   ├── run-sidekick-phase2.ps1 # Phase 2 automated Git runner
-│   └── watch-sidekick.ps1 # Background continuous task watcher
-├── config/
-│   └── sidekick.example.env # Configuration template
-├── src/
-│   └── sidekick/
-│       ├── __init__.py
-│       ├── cli.py         # Command-line interface (init, doctor, run, watch)
-│       ├── onboarding.py  # Repository initialization & doctor diagnostics
-│       ├── config.py      # Environment and config loader
-│       ├── delegate.py    # Automatic delegation router & task submission
-│       ├── ollama_client.py # Ollama API client (health, list, chat)
-│       ├── runner.py      # 12-step execution orchestrator
-│       ├── security.py    # Command & path allowlist, output redactor
-│       ├── secret_scanner.py # Pre-commit secret scanning engine
-│       ├── git_manager.py # Safe Git branching, diff guard, commit & push
-│       ├── state_manager.py # State tracking (.ai/state.json) & lock manager
-│       ├── watcher.py     # Background task watcher
-│       ├── task_parser.py # TASK.md Markdown parser
-│       └── workspace.py   # Safe file I/O and process execution
-├── docs/
-│   ├── architecture.md    # Technical architecture & design (this document)
-│   ├── factory-integration.md # AI Governance Control integration guide
-│   └── delegation-request.example.json # Delegation payload example
-├── tests/
-│   ├── test_sidekick_core.py # Phase 1 unit tests
-│   ├── test_phase2_automation.py # Phase 2 git & diff guard unit tests
-│   ├── test_phase2_e2e.py    # Phase 2 real Ollama E2E test (opt-in lane)
-│   ├── test_delegation.py    # Automatic delegation router unit tests
-│   ├── test_onboarding.py    # sidekick init and sidekick doctor tests
-│   ├── test_claude_code_integration.py # Claude Code integration tests
-│   └── fixtures/          # Verifiable fixture projects
-└── README.md
-```
+The [documentation index](README.md#フォルダ構成) owns the current folder map. Runtime TASK / RESULT files are separate from reusable templates.
 
 ## 3. Workflow Protocol
 
@@ -157,7 +109,12 @@ local-ai-sidekick/
 2. **Developer runs**: `.\scripts\run-sidekick.ps1`.
 3. **Execution Pipeline**: Ollama check -> Task parse -> Local LLM -> Verification -> Self-fix -> RESULT.md -> Exit.
 
-### Phase 2 Autonomous Git Mode
+### Phase 2 Optional Git Automation
+
+This is the legacy/spec-coder edit workflow when Git automation is enabled.
+Explicit `code-explore` and `command-runner` paths skip Git automation; see [Worker roles](worker-roles.md).
+Push remains opt-in and defaults to disabled.
+
 1. **Lead AI writes `.ai/TASK.md`** with `Task ID`.
 2. **Watcher or Runner triggered**: `.\scripts\watch-sidekick.ps1` or `.\scripts\run-sidekick-phase2.ps1`.
 3. **Git Preflight Check**: Confirms clean git working tree and remote configuration.
@@ -165,9 +122,9 @@ local-ai-sidekick/
 5. **Implementation & Verification**: Local LLM edits allowed files, runs verification commands, and self-fixes if tests fail.
 6. **Diff Guard**: Strictly validates modified files against `Allowed Files` before staging.
 7. **Secret Scan**: Scans all modified files for tokens, keys, and credentials.
-8. **Safe Commit & Push**: Commits changes and pushes only `origin ai/<task-id>`.
+8. **Safe Commit & Optional Push**: Commits when configured; pushes only `origin ai/<task-id>` when explicitly enabled.
 9. **Ready For Review**: Updates `.ai/state.json` and `.ai/RESULT.md` to `READY_FOR_REVIEW`.
-10. **Lead AI Review**: Lead AI reviews the remote branch and `RESULT.md`.
+10. **Lead AI Review**: Lead AI reviews the local candidate (or explicitly published branch) and `RESULT.md`.
 
 ## 4. Security & Safety Model
 
@@ -189,4 +146,4 @@ For independent verification, machine-readable phase boundaries, evidence genera
 
 ## 7. Proposed Worker role specialization (2026-10-15)
 
-**Not implemented.** The [Worker role roadmap](worker-role-roadmap.md) proposes command-runner, code-explore and spec-coder within the existing delegation and safety boundaries. It documents the changes needed beyond role labels, separates implementation completion from verification evidence, and defines a staged evaluation using the same model first. It does not change the current runtime or independent verification contract.
+**Candidate paths implemented 2026-10-23.** See [Worker roles](worker-roles.md) for command-runner, code-explore and spec-coder. The [roadmap](worker-role-roadmap.md) retains the earlier proposal and remaining evaluation work. Detailed command-log retention and live Ollama/GPU validation remain open; role names are not evidence of production readiness.
