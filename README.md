@@ -2,43 +2,41 @@
 
 [English](README.md) | [日本語](README.ja.md)
 
-A place to explore useful supporting jobs for my local **NVIDIA RTX 3070**, with powerful cloud AI doing the main work. I am trying combinations with Claude, Gemini and ChatGPT; I am still deciding where the local GPU actually helps.
+**強力なクラウドAIを主役に、手元の NVIDIA RTX 3070 を補助役として活かす方法を探すプロジェクトです。** Claude・Gemini・ChatGPT などと組み合わせながら、ローカルGPUに任せる意味のある仕事を試行錯誤しています。
 
-- **Trying now:** I have Qwen running locally, according to my own usage report. That does not establish which model configuration or Sidekick workflows have been validated on the GPU.
-- **In this repository:** an Ollama coding Worker with bounded delegation, task/result files, Git controls, role-specific paths, and an offline synthetic security-log audit candidate. Code and synthetic tests are separate from real deployment evidence.
-- **Next:** compare short classification/extraction, local search assistance and transcription against simpler alternatives. These are proposals, not implemented product integrations. Coding offload remains one experiment rather than the main strategy.
+- **いま試していること:** 本人の申告では、ローカルで Qwen を動かしています。モデルの詳細や、このリポジトリの各機能がGPUで実運用できたかは別の確認事項です。
+- **このrepoにあるもの:** Ollama を使う coding Worker、範囲を決めた委譲、TASK / RESULT、Git制御、役割別の実行経路、合成ログを使うオフライン監査の候補実装。コード・合成テストの存在と実機運用の実績は区別します。
+- **未実装・今後:** 短い分類・抽出、ローカル検索の補助、音声文字起こしなどを比較予定。各クラウド製品との接続も、実装や検証の有無を確認しながら探ります。coding offload は用途候補の一つです。
 
-The motivation has shifted: in my current workflow, cloud AI often lets me keep building without worrying much about token use. This is a personal reason to reconsider local offload, not a claim that cloud AI is always cheaper or faster.
+当初はクラウドAIのトークン節約を重視していました。いまの自分の使い方では、クラウド側に任せてどんどん作れる場面が増えたので、ローカルに任せる理由を考え直しています。クラウドが常に安い・速いという主張ではありません。
 
 [![CI](https://github.com/moruku36/local-ai-sidekick/actions/workflows/ci.yml/badge.svg)](https://github.com/moruku36/local-ai-sidekick/actions/workflows/ci.yml)
 
-## Start here
+## 読むところ
 
-| Looking for | Read |
+| 知りたいこと | 文書 |
 | --- | --- |
-| What exists, what is verified, and integration limits | [Current status](docs/current-status.md) |
-| RTX 3070 options, sources and next experiments | [Future directions / 今後の展開案](docs/future-directions.md) |
-| A GPU-free first look, then optional Worker setup | [Usage](docs/usage.md) / [詳細な日本語ガイド](docs/usage.ja.md) |
-| All documents and the folder map | [Documentation index](docs/README.md) |
+| 現在の機能と確認できた範囲、連携の限界 | [現在の実装・検証範囲](docs/current-status.md) |
+| RTX 3070 の用途比較と次に試すこと | [今後の展開案](docs/future-directions.md) |
+| GPUを使わない確認、Workerの設定・運用 | [短い導入ガイド](docs/usage.md) / [詳細ガイド](docs/usage.ja.md) |
+| 文書一覧とフォルダ構成 | [docs入口](docs/README.md) |
 
-## How the existing Worker fits
+## 既存Workerの位置づけ
 
 ```text
-User + Lead AI -> bounded task -> local Worker -> result + diff -> Lead / human review
+ユーザー + Lead AI -> 範囲を決めたタスク -> ローカルWorker -> 結果と差分 -> Lead / 人のレビュー
 ```
 
-The Lead owns requirements, architecture, security decisions and final review. The Worker has file/command guards; local command execution still interacts with the host and is not a complete sandbox. Git automation is optional, push defaults to off, and automatic merge is unsupported. See [SECURITY.md](SECURITY.md).
+要件・設計・安全判断・最終レビューはLeadが持ちます。Workerは許可ファイルとコマンドに制約がありますが、ホスト上のコマンド実行は完全なsandboxではありません。Git自動化は任意、pushは既定OFF、自動mergeは未対応です。[安全上の境界](SECURITY.md)も参照してください。
 
-Windows Defender state collection does not need a GPU. It belongs to the separate HomeLab operations workflow; Sidekick's synthetic-log audit is a different, unverified deployment candidate.
+Windows Defenderの単純な状態収集にGPUは不要です。HomeLab側の運用と、このrepoの合成ログ監査候補は分けて扱います。
 
-## Automatic Delegation
+## 2026-11-03 プラン
 
-For existing instruction links: [AGENTS.md](AGENTS.md) and [.ai/DELEGATION.md](.ai/DELEGATION.md) define `LOCAL / LEAD / BLOCKED`. See the [operating guide](docs/usage.ja.md#自動委譲) for the helper, Watcher and review steps. Queueing a task does not mean it finished.
+- **RTX 3070**: NVIDIA RTX 3070
+- **モデル**: Gemma 4 E4B, user-requested notation gemma4:e4b Q5_K_M (5-bit)
+- **状態**: プラン中、未インストール・未ベンチマーク
 
-## Global Integration (Optional)
+## ライセンス
 
-Codex / Claude Code setup code and instruction files exist. See the [optional setup guide](docs/usage.ja.md#グローバル連携任意) and [integration evidence limits](docs/current-status.md#cloud-ai-integration-boundaries) before changing host settings. Gemini / ChatGPT product connections are exploration ideas; the generic file protocol does not establish a working connector.
-
-## License
-
-[MIT](LICENSE).
+[MIT](LICENSE)。

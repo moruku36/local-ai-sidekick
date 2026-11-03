@@ -31,6 +31,12 @@
 
 Windows Defenderの単純な状態収集にGPUは不要です。HomeLab側の運用と、このrepoの合成ログ監査候補は分けて扱います。
 
+## 2026-11-03 プラン
+
+- **RTX 3070**: NVIDIA RTX 3070
+- **モデル**: Gemma 4 E4B, user-requested notation gemma4:e4b Q5_K_M (5-bit)
+- **状態**: プラン中、未インストール・未ベンチマーク
+
 ## ライセンス
 
 [MIT](LICENSE)。
