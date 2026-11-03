@@ -12,6 +12,20 @@ The motivation has shifted: in my current workflow, cloud AI often lets me keep 
 
 [![CI](https://github.com/moruku36/local-ai-sidekick/actions/workflows/ci.yml/badge.svg)](https://github.com/moruku36/local-ai-sidekick/actions/workflows/ci.yml)
 
+## Model adoption plan — 2026-11-03
+
+| Item | Plan / status |
+| --- | --- |
+| Local GPU | NVIDIA RTX 3070 |
+| Selected model | Gemma 4 E4B |
+| Requested quantization | `gemma4:e4b` + `Q5_K_M` (5-bit); this is the requested configuration, not a confirmed runnable tag |
+| Adoption status | Planned; this documentation update does not install, download or benchmark the model |
+| Still to confirm | Exact E4B Q5_K_M distribution file / Ollama tag, VRAM fit, inference speed and quality compared with alternatives |
+
+The owner plans to use this configuration as the local AI sidekick. The existing Qwen usage report remains the current reported state; this plan does not establish that Gemma is already in use or is the best-performing choice on the RTX 3070.
+
+Sources checked on **2026-11-03**: [Google's Gemma 4 overview](https://ai.google.dev/gemma/docs/core) confirms E4B, and the [official Ollama tag list](https://ollama.com/library/gemma4/tags) lists `gemma4:e4b`. An official E4B `Q5_K_M` tag was not confirmed there. Select the exact distribution before installation; full GPU residency and performance remain unverified.
+
 ## Start here
 
 | Looking for | Read |

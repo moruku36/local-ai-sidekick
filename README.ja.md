@@ -12,6 +12,20 @@
 
 [![CI](https://github.com/moruku36/local-ai-sidekick/actions/workflows/ci.yml/badge.svg)](https://github.com/moruku36/local-ai-sidekick/actions/workflows/ci.yml)
 
+## モデル導入予定 — 2026-11-03
+
+| 項目 | 予定・確認状況 |
+| --- | --- |
+| ローカルGPU | NVIDIA RTX 3070 |
+| 採用予定モデル | Gemma 4 E4B |
+| 希望する量子化 | `gemma4:e4b` + `Q5_K_M`（5-bit）。希望する構成の表記であり、実行可能な正式タグは未確認 |
+| 導入状況 | 導入予定。今回の文書更新ではインストール・ダウンロード・ベンチマークは行わない |
+| 今後の確認 | E4B Q5_K_Mの配布ファイル・正式なOllamaタグ、VRAMへの適合、推論速度、他の候補と比べた品質 |
+
+ローカルAIサイドキックとして、この構成を使う予定です。現在の利用状況は上記のQwen動作の本人申告のままで、Gemmaの導入済み・実運用済みという意味ではありません。RTX 3070で最も推論性能がよいかは未確認です。
+
+**2026-11-03確認の公式情報:** [GoogleのGemma 4概要](https://ai.google.dev/gemma/docs/core)でE4Bを、[Ollamaの公式タグ一覧](https://ollama.com/library/gemma4/tags)で`gemma4:e4b`を確認しました。同一覧ではE4Bの`Q5_K_M`正式タグを確認できていません。導入前に配布元・正確なファイルを選定します。モデル全体がVRAMに収まるか、実際の推論速度・品質は実機での確認が必要です。
+
 ## 読むところ
 
 | 知りたいこと | 文書 |
