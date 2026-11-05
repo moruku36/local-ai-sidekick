@@ -32,6 +32,7 @@
 | --- | --- |
 | 現在の機能と確認できた範囲、連携の限界 | [現在の実装・検証範囲](docs/current-status.md) |
 | RTX 3070 の用途比較と次に試すこと | [今後の展開案](docs/future-directions.md) |
+| 必要な時だけ使うクラウドGPU、費用ガード、Kaggleの境界 | [Modal GPU実験場](docs/modal-gpu-experiments.md) |
 | GPUを使わない確認、Workerの設定・運用 | [短い導入ガイド](docs/usage.md) / [詳細ガイド](docs/usage.ja.md) |
 | 文書一覧とフォルダ構成 | [docs入口](docs/README.md) |
 
