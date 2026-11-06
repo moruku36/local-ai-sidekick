@@ -12,6 +12,33 @@
 
 [![CI](https://github.com/moruku36/local-ai-sidekick/actions/workflows/ci.yml/badge.svg)](https://github.com/moruku36/local-ai-sidekick/actions/workflows/ci.yml)
 
+## 現在の構成とアーキテクチャ — 2026-11-06
+
+公開コードを基準にした整理で、実機の稼働確認ではありません。RTX 3070 / Qwen は本人の利用申告、Gemma導入とModal / Kaggleは計画です。Claude Code用のagent / skill定義は存在しますが、稼働サービスの証明ではありません。HomeLab / OpenClaw は別システムです。
+
+[11月6日の構成一覧・アーキテクチャ図・ネットワーク図・根拠](docs/architecture-2026-11-06.md)を参照してください。
+
+```mermaid
+flowchart TD
+    U["User / human approval"] --> L["Lead AI host: scope, design, review"]
+    L --> D["Delegation assessment: LOCAL / LEAD / BLOCKED"]
+    D -->|LOCAL only| H["sidekick.delegate: validate and publish TASK"]
+    subgraph Local["Local development host / RTX 3070 context"]
+        H --> T[".ai/TASK.md + rules"]
+        T --> W["Watcher or manual runner"]
+        W --> C["command-runner: approved commands, no LLM"]
+        W --> M["code-explore / spec-coder / legacy coding path"]
+        M --> O["Local Ollama: Qwen owner-reported"]
+        O --> M
+        C --> R["RESULT + state + observed verification"]
+        M --> G["Scope / diff / secret guards; optional Git"]
+        G --> R
+    end
+    R --> L
+    D -->|LEAD or BLOCKED| L
+    L -. "future experiments, not deployed" .-> P["Gemma adoption / Modal GPU / Kaggle"]
+```
+
 ## モデル導入予定 — 2026-11-03
 
 | 項目 | 予定・確認状況 |
