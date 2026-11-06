@@ -21,7 +21,10 @@ no remediation. See the [audit guide](security-audit.md) for input restrictions.
 The repository targets Windows, macOS and Linux. The Worker uses Python's standard
 library; Git automation requires Git 2.30+. Model paths require an already running
 local Ollama service and a suitable installed model. The configured default is
-`qwen2.5:14b`; it is not a promise of full GPU residency on an 8 GB card.
+`qwen2.5:14b`; it is a legacy default, not the owner's current model or a promise
+of full GPU residency on an 8 GB card. Qwen is no longer in use. Set
+`SIDEKICK_MODEL` or pass `--model` for the actual installed model; see
+[current model status](../README.md#model-status).
 
 If you decide to install the package and initialize a **target** repository:
 

@@ -4,7 +4,7 @@
 
 A place to explore useful supporting jobs for my local **NVIDIA RTX 3070**, with powerful cloud AI doing the main work. I am trying combinations with Claude, Gemini and ChatGPT; I am still deciding where the local GPU actually helps.
 
-- **Trying now:** I have Qwen running locally, according to my own usage report. That does not establish which model configuration or Sidekick workflows have been validated on the GPU.
+- **Current model status:** Qwen is no longer in use. The repository still contains Qwen defaults and earlier experiment settings; they do not describe my current runtime. A replacement model's installed tag and live operation have not been verified for this update.
 - **In this repository:** an Ollama coding Worker with bounded delegation, task/result files, Git controls, role-specific paths, and an offline synthetic security-log audit candidate. Code and synthetic tests are separate from real deployment evidence.
 - **Next:** compare short classification/extraction, local search assistance and transcription against simpler alternatives. These are proposals, not implemented product integrations. Coding offload remains one experiment rather than the main strategy.
 
@@ -14,7 +14,7 @@ The motivation has shifted: in my current workflow, cloud AI often lets me keep 
 
 ## Current architecture — 2026-11-06
 
-Source-backed snapshot, not a live deployment check: local RTX 3070/Qwen use is owner-reported; Gemma adoption and Modal/Kaggle experiments remain plans. Claude Code agent/skill definitions are present, not deployed services. HomeLab/OpenClaw are separate systems.
+The current repository provides a Python CLI and a local file-based handoff between a Lead AI host and a bounded Worker. The diagram below describes implemented paths, not a live deployment check. Qwen is no longer the reported active model. Gemma adoption and Modal/Kaggle experiments remain unverified plans. HomeLab/OpenClaw are separate systems.
 
 See the [dated architecture, network diagram and configuration evidence](docs/architecture-2026-11-06.md).
 
@@ -28,7 +28,7 @@ flowchart TD
         T --> W["Watcher or manual runner"]
         W --> C["command-runner: approved commands, no LLM"]
         W --> M["code-explore / spec-coder / legacy coding path"]
-        M --> O["Local Ollama: Qwen owner-reported"]
+        M --> O["Local Ollama: explicitly selected installed model"]
         O --> M
         C --> R["RESULT + state + observed verification"]
         M --> G["Scope / diff / secret guards; optional Git"]
@@ -39,7 +39,32 @@ flowchart TD
     L -. "future experiments, not deployed" .-> P["Gemma adoption / Modal GPU / Kaggle"]
 ```
 
-## Model adoption plan — 2026-11-03
+| Component | What exists in this repository |
+| --- | --- |
+| Lead entrypoints | `AGENTS.md`, `CLAUDE.md`, delegation policy and optional host setup/bootstrap |
+| Delegation | `LOCAL / LEAD / BLOCKED` assessment; `sidekick.delegate` publishes bounded `.ai/TASK.md` requests |
+| CLI and execution | `init`, `doctor`, `run`, `integrate`, plus `--watch` mode; manual execution or a separately started Watcher |
+| Model-free role | `command-runner` executes approved commands without calling an LLM or Git automation |
+| Model-backed roles | Read-only `code-explore`, bounded `spec-coder`, and the legacy coding path use configured local Ollama |
+| Review evidence | `.ai/RESULT.md`, state, observed verification and optional guarded Git changes; no automatic merge |
+| Claude Code assets | 8 agent definitions and 3 skills, plus imports/hook; these are instruction files, not 8 deployed services |
+| Security-log audit candidate | Offline rules over synthetic/public inputs, with optional local Ollama assistance; no remediation |
+
+See the [role contracts](docs/worker-roles.md) and [integration evidence limits](docs/current-status.md#cloud-ai-integration-boundaries). `QUEUED` means a request was written, not that a Worker completed it. The helper does not start the Watcher.
+
+## Model status
+
+| Item | Current evidence |
+| --- | --- |
+| Local GPU context | NVIDIA RTX 3070 |
+| Qwen use | No longer in use, per the owner's latest correction |
+| Remaining Qwen configuration | `qwen2.5:14b` remains the source/example default; `Modelfile` is an earlier Qwen experiment setting |
+| Active replacement model | Not established by the repository or this documentation check |
+| Model selection | Set `SIDEKICK_MODEL` or pass `--model` to select the actual installed model before model-backed work |
+
+This update changes documentation only. It does not replace runtime defaults, install a model or claim a successful GPU run. Leaving the model unspecified still selects the legacy Qwen default in the current code.
+
+### Gemma adoption plan recorded on 2026-11-03
 
 | Item | Plan / status |
 | --- | --- |
@@ -49,11 +74,20 @@ flowchart TD
 | Adoption status | Planned; this documentation update does not install, download or benchmark the model |
 | Still to confirm | Exact E4B Q5_K_M distribution file / Ollama tag, VRAM fit, inference speed and quality compared with alternatives |
 
-The owner plans to use this configuration as the local AI sidekick. The existing Qwen usage report remains the current reported state; this plan does not establish that Gemma is already in use or is the best-performing choice on the RTX 3070.
+This is the previously recorded adoption plan, not confirmation that Gemma is now installed or active. Qwen's discontinuation does not establish which model replaced it. Performance on the RTX 3070 remains unverified.
 
 Sources checked on **2026-11-03**: [Google's Gemma 4 overview](https://ai.google.dev/gemma/docs/core) confirms E4B, and the [official Ollama tag list](https://ollama.com/library/gemma4/tags) lists `gemma4:e4b`. An official E4B `Q5_K_M` tag was not confirmed there. Select the exact distribution before installation; full GPU residency and performance remain unverified.
 
 ## Start here
+
+For a GPU-free first look with Python 3.10+, run from this checkout:
+
+```bash
+PYTHONPATH=src python -m sidekick.cli --help
+PYTHONPATH=src python -m sidekick.security_audit --input tests/fixtures/security_audit/synthetic-auth.txt --source sshd --bsd-year 2026 --synthetic-or-public
+```
+
+These commands need no model or package installation. The audit uses a synthetic fixture and applies no remediation. See the usage guide below for PowerShell syntax and optional model-backed setup.
 
 | Looking for | Read |
 | --- | --- |
@@ -69,7 +103,7 @@ Sources checked on **2026-11-03**: [Google's Gemma 4 overview](https://ai.google
 User + Lead AI -> bounded task -> local Worker -> result + diff -> Lead / human review
 ```
 
-The Lead owns requirements, architecture, security decisions and final review. The Worker has file/command guards; local command execution still interacts with the host and is not a complete sandbox. Git automation is optional, push defaults to off, and automatic merge is unsupported. See [SECURITY.md](SECURITY.md).
+The Lead owns requirements, architecture, security decisions and final review. The Worker has file/command guards; local command execution still interacts with the host and is not a complete sandbox. Configuration defaults are `auto_git=false` and `auto_push=false`; Watcher mode enables Git automation, so review its settings before starting it. Push remains opt-in and automatic merge is unsupported. See [SECURITY.md](SECURITY.md).
 
 Windows Defender state collection does not need a GPU. It belongs to the separate HomeLab operations workflow; Sidekick's synthetic-log audit is a different, unverified deployment candidate.
 
