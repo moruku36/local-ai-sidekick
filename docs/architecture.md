@@ -4,6 +4,9 @@
 
 This document describes the existing coding Worker design, with historical Phase 1/2 terminology. It is one candidate use of the local GPU, not the project-wide strategy. Current runtime capabilities and validation limits are recorded in the status and role guides.
 
+> For the **2026-11-06** project-wide architecture, network boundaries and current configuration, use the [dated snapshot](architecture-2026-11-06.md). The image below is the historical coding-Worker design, not a current deployment inventory.
+> 最新の構成・ネットワーク境界は[11月6日版](architecture-2026-11-06.md)へ。以下の画像は既存Workerの設計資料で、現在の実機構成図ではありません。
+
 ## 1. Overview
 
 The coding Worker separates Lead judgment from bounded local execution. Cloud-token reduction was an original motivation, not a measured or guaranteed outcome. The broader project now explores useful supporting jobs for an RTX 3070:
