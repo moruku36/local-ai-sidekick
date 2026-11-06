@@ -4,6 +4,8 @@
 
 最新の構成整理: **[2026-11-06のアーキテクチャ・ネットワーク図](architecture-2026-11-06.md)**（main `ad8f9bf`基準）。ロール別agent / skill資材、Gemma導入予定、Modal / Kaggle実験案を含みます。実機稼働確認ではありません。
 
+**モデル状況の訂正:** Qwenは現在使っていないという本人の最新情報を反映しました。コードの `qwen2.5:14b` 既定値と過去の利用申告は、現在の実運用を示しません。後継モデルは未確認です。詳しくは[READMEの現在のモデル状況](../README.ja.md#現在のモデル状況)を参照してください。
+
 以下の実装説明・実機試験記録の確認日: **2026-10-25**。当時のコード読解基準は main `ae7f8d8`。
 「実装あり」はコードが存在する意味です。合成テストの成功は、実モデルの品質・GPU性能・常用運転の確認を意味しません。
 
@@ -11,14 +13,14 @@
 
 | 項目 | コード・確認できること | 証拠の限界 |
 | --- | --- | --- |
-| CLI / 初期化 / 診断 | [cli.py](../src/sidekick/cli.py)、[onboarding.py](../src/sidekick/onboarding.py): init / doctor / run / watch / integrate | doctorのreadinessと、実推論・実運用の成功は別 |
+| CLI / 初期化 / 診断 | [cli.py](../src/sidekick/cli.py)、[onboarding.py](../src/sidekick/onboarding.py): init / doctor / run / integrate、`--watch` モード | doctorのreadinessと、実推論・実運用の成功は別 |
 | 委譲 | [delegate.py](../src/sidekick/delegate.py): Leadのassessmentを検査し、LOCALのみTASKを発行 | 意味的な安全分類はLeadの責任。QUEUEDは完了ではない |
 | 既存coding Worker | [runner.py](../src/sidekick/runner.py)、[ollama_client.py](../src/sidekick/ollama_client.py): 許可ファイル読取、Ollama提案、編集、検証、自己修正、RESULT | 実Ollama E2Eは別のopt-inレーン。今回未実行 |
 | Git制御 | [git_manager.py](../src/sidekick/git_manager.py)、[config.py](../src/sidekick/config.py): task branch、diff guard、secret scan、任意commit/push | auto_git / auto_pushは既定false。自動mergeは未対応。完全なOS sandboxではない |
 | command-runner | [runner.py](../src/sidekick/runner.py): 承認済みコマンドのみ、モデル・Git自動化を呼ばず観測を返す | GPU不要。詳細ログ保存は未実装、`log_ref: null` |
 | code-explore / spec-coder | [role_contract.py](../src/sidekick/role_contract.py)、[code_explore.py](../src/sidekick/code_explore.py): 読取調査と仕様限定編集の候補経路 | 合成・mock試験と実機品質は別。具体的な制約は[role guide](worker-roles.md) |
 | ローカル監査候補 | [security_audit.py](../src/sidekick/security_audit.py)、[pipeline](../src/sidekick/security_log_pipeline.py): 合成ログのルール処理、証拠照合、明示opt-inのlocal Ollama補助 | 実ログ・本番取り込み・live Ollama推論は未検証。修復操作は実行しない |
-| Qwenの稼働 | 本人の利用申告 | モデルtag・量子化・VRAM・CPU分割・各Worker経路の実機結果は今回測定していない |
+| ローカルモデルの状況 | 本人の最新の訂正ではQwenは現在使っていない。Qwenのコード既定値は残っている | 後継モデルtag・量子化・VRAM・CPU分割・各Worker経路の実機結果は今回確認していない |
 
 [Worker roles](worker-roles.md)と[監査候補](security-audit.md)を現行の操作説明とし、
 [旧roadmap](worker-role-roadmap.md)の過去commitに対する観察を現在の欠陥の証拠にしないでください。

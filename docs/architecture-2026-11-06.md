@@ -8,6 +8,10 @@ This is a source-backed snapshot of the current repository, based on main [`ad8f
 
 main `ad8f9bf`（PR #18–#21を含む）の公開コード・文書を基準にした構成整理です。**11月6日に実機の稼働・GPU性能を測定した図ではありません。** 実装、本人の利用申告、過去の合成試験、今後の計画を区別します。この更新でモデル取得・推論・デプロイ・認証変更・有料実験は行いません。
 
+**Model-status correction:** The owner has since clarified that Qwen is no longer in use. This supersedes the earlier usage report in this snapshot. The source still has a Qwen default; the active replacement model has not been verified. See [current model status](../README.md#model-status).
+
+**モデル状況の訂正:** 本人の最新の訂正により、Qwenは現在使っていません。このスナップショットの旧利用申告を訂正します。コードのQwen既定値は残っており、後継モデルの実機稼働は未確認です。[現在のモデル状況](../README.ja.md#現在のモデル状況)を参照してください。
+
 ## Architecture / アーキテクチャ図
 
 ```mermaid
@@ -20,7 +24,7 @@ flowchart TD
         T --> W["Watcher or manual runner"]
         W --> C["command-runner: approved commands, no LLM"]
         W --> M["code-explore / spec-coder / legacy coding path"]
-        M --> O["Local Ollama: Qwen owner-reported"]
+        M --> O["Local Ollama: explicitly selected installed model"]
         O --> M
         C --> R["RESULT + state + observed verification"]
         M --> G["Scope / diff / secret guards; optional Git"]
@@ -70,10 +74,10 @@ No private IPs, machine names, account identifiers, tunnel endpoints or actual f
 
 | Component / 要素 | State as of this snapshot / この整理での状態 | Evidence / 根拠 |
 | --- | --- | --- |
-| RTX 3070 + Qwen | Owner-reported local usage. Exact active tag, quantization, VRAM residency and performance are unmeasured here. 本人申告。実機再測定なし。 | [Current status](current-status.md), [model plan](../README.md) |
+| RTX 3070 / local model status | RTX 3070 is the local GPU context. Qwen is no longer in use per the owner's correction; the active replacement tag, quantization and GPU performance remain unverified. Qwen利用終了を反映、後継モデルの実機確認なし。 | [Current status](current-status.md), [model status](../README.md#model-status) |
 | Default model setting | Source default/example is `qwen2.5:14b`, not proof of the installed/running model. コードの既定値であり実機tagの確定ではない。 | [config.py](../src/sidekick/config.py), [example env](../config/sidekick.example.env) |
 | Gemma 4 E4B / Q5_K_M | Adoption plan from Nov 3, not confirmed installed; exact distribution and GPU fit still open. 導入予定のまま。 | [README model plan](../README.md) |
-| Python CLI + file protocol | init / doctor / run / watch / integrate, bounded delegation and result/state files exist. QUEUED does not mean executed. | [CLI](../src/sidekick/cli.py), [delegate](../src/sidekick/delegate.py), [runner](../src/sidekick/runner.py) |
+| Python CLI + file protocol | init / doctor / run / integrate, `--watch` mode, bounded delegation and result/state files exist. QUEUED does not mean executed. | [CLI](../src/sidekick/cli.py), [delegate](../src/sidekick/delegate.py), [runner](../src/sidekick/runner.py) |
 | Worker roles | command-runner without model/Git automation; read-only code-explore; bounded spec-coder; legacy coding path. Detailed command output retention remains absent (`log_ref: null`). | [Role guide](worker-roles.md), [runtime gates](../src/sidekick/role_contract.py) |
 | Lead integration assets | Codex instructions and Claude Code imports/hook plus **8 agent definitions and 3 skills** added in #18. These are instruction assets, not eight deployed services or proof of live execution. | [AGENTS.md](../AGENTS.md), [CLAUDE.md](../CLAUDE.md), [.claude/agents](../.claude/agents), [.claude/skills](../.claude/skills) |
 | Synthetic security audit | Rule/evidence pipeline with optional local Ollama assistance; real-log deployment and live quality remain unverified. | [Audit guide](security-audit.md), [audit CLI](../src/sidekick/security_audit.py) |
