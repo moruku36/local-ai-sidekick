@@ -32,6 +32,7 @@ Sources checked on **2026-11-03**: [Google's Gemma 4 overview](https://ai.google
 | --- | --- |
 | What exists, what is verified, and integration limits | [Current status](docs/current-status.md) |
 | RTX 3070 options, sources and next experiments | [Future directions / 今後の展開案](docs/future-directions.md) |
+| Episodic cloud GPU tests, cost guards and Kaggle boundaries | [Modal GPU experiments](docs/modal-gpu-experiments.md) |
 | A GPU-free first look, then optional Worker setup | [Usage](docs/usage.md) / [詳細な日本語ガイド](docs/usage.ja.md) |
 | All documents and the folder map | [Documentation index](docs/README.md) |
 
