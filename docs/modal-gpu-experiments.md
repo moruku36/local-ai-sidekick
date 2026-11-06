@@ -12,6 +12,38 @@
 
 この設計判断はSidekickに置きます。HomeLabの監視・日常運用とは分け、既存WorkerをModalへ自動転送する機能は追加しません。Gemmaの導入予定や現在のQwen利用報告も変更しません。
 
+## 具体的な用途: Name That LLM と小規模モデル（2026-11-06追記）
+
+### 文章をどのAIが書いたか分類する
+
+対象はKaggleの **[Name That LLM](https://www.kaggle.com/competitions/name-that-llm)**。OCRや単純な人間/AIの二値判定ではなく、文章の生成元を18モデルから当てる課題です。評価はクラスごとのrecallを平均するbalanced accuracyです。[公式概要・評価](https://www.kaggle.com/competitions/name-that-llm/overview/description)
+
+SidekickのGPU用途として有望な**実験候補**と位置づけます。分類器やembedding、必要なら小型モデルの微調整をローカルで比較し、VRAM不足・時間のかかる試行だけModalで補う案です。Gemmaが最適、RTX 3070で学習可能、競技成績が改善する、という実証はまだありません。
+
+進め方の案:
+
+1. 利用権限のある学習データと固定した検証分割で、文字/単語n-gramと線形分類器などCPUの基準を作る。
+2. 小型encoderのembedding + 分類器と比較する。生成元ごとのrecall、balanced accuracy、混同行列、時間・ピークVRAMを記録する。
+3. 改善余地がある時だけ小型モデルのLoRA等を比較する。重複文や同一prompt由来の漏洩に注意し、利用可能なgroup情報があれば分割に反映する。hidden testやLeaderboardへの反復適合で手法を選ばない。
+
+この順序はプロジェクト向け提案です。競技データを取得・公開したものではなく、Notebook・学習処理・提出物も今回作成していません。
+
+### Modalでの事前実験とKaggleでの採点を分ける
+
+2026-11-06確認の公式概要の検索取得結果では、提出はKaggle Notebook経由、**Internet無効、CPU/GPUとも実行9時間以内**、出力名は `submission.parquet`。無料で公開されている外部データ・事前学習モデルは許可対象と記されています。[Code Requirements](https://www.kaggle.com/competitions/name-that-llm/overview/code-requirements)
+
+したがって**採点中にModalや外部LLM APIを呼び出す構成にはしません**。Modalは、競技規約上許される場合の事前学習・評価の候補に限定し、提出側は許可された重み・依存関係でKaggle内に完結させる設計です。公開モデルが許可されることと、競技データの外部転送・私的共有・モデル再配布が許可されることは別です。
+
+概要は公式検索結果で確認できましたが、[競技Rules](https://www.kaggle.com/competitions/name-that-llm/rules)の全文は取得できていません。実行前に現行Rules、外部学習とデータ持出しの条件、ライセンス、提出回数・期限・再現要件を直接確認します。許可が確認できない競技データはModalにも公開repoにも送らず、公開・合成データだけで準備します。
+
+### 小さなGemmaを動かすことと学習すること
+
+前回の[2026-11-03の導入予定](../README.ja.md)は **Gemma 4 E4B / Q5_K_M（5-bit系）** です。「3-bit版」とは確定しません。正確な配布ファイル・Ollamaタグ、量子化方式、実GPUでの性能は未確認という既存の扱いを維持します。E4Bはモデル規模の表記で、4-bitの意味ではありません。
+
+量子化した小型モデルの**推論・分類評価**は候補になります。一方、量子化済み推論ファイルがそのまま学習用になるとは限りません。小規模モデルを学習する競技が見つかった場合は、対応する学習用checkpoint、runtime、LoRA/QLoRA等の方式、保存・提出形式を別に選びます。学習は重み以外にactivation・勾配・optimizer等のメモリが必要で、推論できることは学習できることの保証ではありません。[Googleのモデル規模・量子化・fine-tuningメモリ説明](https://ai.google.dev/gemma/docs/core)
+
+「自由に動かす」は自分で設定して試せるという方向性であり、無料・利用制限なし・全学習が8 GBで可能という意味ではありません。まずRTX 3070で収まる構成を探し、Modalを使う場合は下記ガードをそのまま適用します。学習では最大step/epoch、dataset件数、checkpoint容量・保持数も決め、GPU時間だけでなく保存・転送費を含むUSD総上限を確認します。Name That LLM以外への参加は将来候補であり、特定の学習コンペへの応募・提出を確約しません。
+
 ## 最初の実験を小さく決める
 
 1. [GPU不要の基準作り](future-directions.md#1-gpu不要で基準を作る最初に推奨)を先に行う。公開可能な合成入力、採点方法、成功・中止条件を固定する。

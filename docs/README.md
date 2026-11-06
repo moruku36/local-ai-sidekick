@@ -12,7 +12,7 @@
 
 | 文書 | 位置づけ |
 | --- | --- |
-| [Modal GPU experiments](modal-gpu-experiments.md) | RTX 3070を日常の補助役、Modalを単発実験場として使い分ける計画。費用ガードとKaggleの境界 |
+| [Modal GPU experiments](modal-gpu-experiments.md) | RTX 3070を日常の補助役、Modalを単発実験場として使い分ける計画。費用ガード、Name That LLMと小規模モデルの推論・学習案、Kaggleの境界 |
 | [Worker roles](worker-roles.md) | 現行の候補実装: command-runner / code-explore / spec-coder の能力と限界 |
 | [Security audit](security-audit.md) | 合成・公開ログだけのオフライン候補。HomeLab本番移行や実GPU推論を示さない |
 | [Architecture](architecture.md) | 既存coding Workerの技術設計。プロジェクト全体の主戦略ではない |
