@@ -2,21 +2,39 @@
 
 [English](README.md) | [日本語](README.ja.md)
 
-**強力なクラウドAIを主役に、手元の NVIDIA RTX 3070 を補助役として活かす方法を探すプロジェクトです。** Claude・Gemini・ChatGPT などと組み合わせながら、ローカルGPUに任せる意味のある仕事を試行錯誤しています。
-
-- **現在のモデル:** Qwen はもう使っていません。コードの既定値や過去の実験設定にはQwenが残っていますが、現在の稼働構成を表すものではありません。後継モデルの正確なタグ・導入状況・実機稼働は、この更新では確認していません。
-- **このrepoにあるもの:** Ollama を使う coding Worker、範囲を決めた委譲、TASK / RESULT、Git制御、役割別の実行経路、合成ログを使うオフライン監査の候補実装。コード・合成テストの存在と実機運用の実績は区別します。
-- **未実装・今後:** 短い分類・抽出、ローカル検索の補助、音声文字起こしなどを比較予定。各クラウド製品との接続も、実装や検証の有無を確認しながら探ります。coding offload は用途候補の一つです。
-
-当初はクラウドAIのトークン節約を重視していました。いまの自分の使い方では、クラウド側に任せてどんどん作れる場面が増えたので、ローカルに任せる理由を考え直しています。クラウドが常に安い・速いという主張ではありません。
+**強力なクラウドAIを主役に、手元のローカルGPUを補助役として活かす方法を探すプロジェクトです。** Claude・Gemini・ChatGPTなどと組み合わせながら、ローカルに任せる意味のある仕事を試行錯誤しています。
 
 [![CI](https://github.com/moruku36/local-ai-sidekick/actions/workflows/ci.yml/badge.svg)](https://github.com/moruku36/local-ai-sidekick/actions/workflows/ci.yml)
 
-## 現在の構成とアーキテクチャ — 2026-11-06
+## ひと目で分かる現状
 
-現在のrepoの中心は、Python CLIと、Lead AIホストから範囲を決めてWorkerへ渡すローカルファイル方式です。下図は実装されている経路を示し、実機の稼働確認ではありません。Qwenは現在使っておらず、Gemma導入とModal / Kaggle実験は未検証の計画として扱います。HomeLab / OpenClaw は別システムです。
+| 項目 | 状況 |
+| --- | --- |
+| ローカルホスト（2026-11-17まで） | NVIDIA RTX 3070（8GB）。[2026-11-06の構成スナップショット](docs/architecture-2026-11-06.md)参照 |
+| ローカルホスト（2026-11-18から） | RTX 5070 Ti（16GB）・メモリ64GBの新PC。[2026-11-18の構成](docs/architecture-2026-11-18.md)参照（計画段階。導入と実測は到着後） |
+| 現在のローカルモデル | 確定したものはない。Qwenは利用終了。現行ホストでの後継は未確定 |
+| このrepoにあるもの | Python CLI、範囲を決めたファイル方式の委譲（Lead AI → ローカルWorker）、Workerのロール、合成ログを使うオフライン監査の候補実装 |
+| 根拠の扱い | コードと合成テストは「ソースに存在すること」の根拠であり、実機で動いたことの証明ではない |
 
-[11月6日の構成一覧・アーキテクチャ図・ネットワーク図・根拠](docs/architecture-2026-11-06.md)を参照してください。
+## まず試す（GPU・モデル不要）
+
+Python 3.10+があれば、このcheckoutで確認できます。
+
+```powershell
+$env:PYTHONPATH = 'src'
+python -m sidekick.cli --help
+python -m sidekick.security_audit --input tests/fixtures/security_audit/synthetic-auth.txt --source sshd --bsd-year 2026 --synthetic-or-public
+```
+
+モデル取得・パッケージインストールは不要です。監査例は合成fixtureのみを使い、修復操作は行いません。Bashでは各Pythonコマンドの先頭に `PYTHONPATH=src` を付けます。PowerShellの書き方と任意のモデル連携は[導入ガイド](docs/usage.md) / [詳細ガイド](docs/usage.ja.md)にあります。
+
+## 仕組み
+
+```text
+ユーザー + Lead AI -> 範囲を決めたタスク -> ローカルWorker -> 結果と差分 -> Lead / 人のレビュー
+```
+
+要件・設計・安全判断・最終レビューはLeadが持ちます。Workerにはファイル・コマンドの制約がありますが、ホスト上のコマンド実行は完全なsandboxではありません。設定の既定値は `auto_git=false` / `auto_push=false`。WatcherモードはGit自動化を有効にするため、起動前に設定を確認してください。pushは明示opt-in、自動mergeは未対応です。[安全上の境界](SECURITY.md)も参照してください。
 
 ```mermaid
 flowchart TD
@@ -50,45 +68,20 @@ flowchart TD
 | Claude Code用資材 | 8つのagent定義、3つのskill、imports・hook。8サービスの稼働を意味しない |
 | セキュリティログ監査候補 | 合成・公開入力のオフラインルール処理と、任意のローカルOllama補助。修復操作は行わない |
 
-詳細は[ロール契約](docs/worker-roles.md)と[連携の確認範囲](docs/current-status.md#cloud-ai-integration-boundaries)を参照してください。`QUEUED`はタスクファイルの発行であり、Workerの実行完了ではありません。委譲helperはWatcherを起動しません。
+詳細は[ロール契約](docs/worker-roles.md)と[現在の実装・検証範囲](docs/current-status.md)を参照してください。`QUEUED`はタスクファイルの発行であり、Workerの実行完了ではありません。委譲helperはWatcherを起動しません。図は現行ホストで実装されている経路です。2026-11-18のハードウェア変更は[2026-11-18の構成](docs/architecture-2026-11-18.md)にまとめています。
 
 ## 現在のモデル状況
 
 | 項目 | 確認できていること |
 | --- | --- |
-| ローカルGPU | NVIDIA RTX 3070 |
-| Qwenの利用 | 現在は使っていない。本人の最新の訂正を反映 |
-| 残っているQwen設定 | コード・env例の既定値は `qwen2.5:14b`。`Modelfile` は過去のQwen実験設定 |
-| 現在の後継モデル | repoと今回の文書確認からは確定できない |
-| 実行時の指定 | モデルを使う前に `SIDEKICK_MODEL` または `--model` で実際に導入したモデルを指定する |
+| Qwen | 現在は使っていない（本人の最新の訂正）。コード・env例の既定値 `qwen2.5:14b` と `Modelfile` の実験設定は残っており、現行コードではモデルを省略すると旧Qwen既定値が選ばれる |
+| 後継モデル（現行ホスト） | repoと今回の文書確認からは確定できない。モデルを使う前に `SIDEKICK_MODEL` または `--model` で実際に導入したモデルを指定する |
+| Gemma導入予定（2026-11-03記録） | Gemma 4 E4B、`gemma4:e4b` + `Q5_K_M`（5-bit）を希望。導入予定のままで、正式タグは未確認。GemmaがQwenの後継だと確認したものではない |
+| 2026-11-18から | ローカルLLM基盤は新PC上のStrataへ。普段使いは Qwen3.8-Flash-Next IQ3_S、重い処理は DeepSeek V4.1-Flash、片方ずつ運用。実測までは計画として扱う（[2026-11-18の構成](docs/architecture-2026-11-18.md)） |
 
-今回の変更は文書のみです。コードの既定値変更、モデル導入、GPUでの動作確認は行っていません。現行コードではモデルを省略すると旧Qwen既定値が選ばれる点に注意してください。
-
-### 2026-11-03に記録したGemma導入予定
-
-| 項目 | 予定・確認状況 |
-| --- | --- |
-| ローカルGPU | NVIDIA RTX 3070 |
-| 採用予定モデル | Gemma 4 E4B |
-| 希望する量子化 | `gemma4:e4b` + `Q5_K_M`（5-bit）。希望する構成の表記であり、実行可能な正式タグは未確認 |
-| 導入状況 | 導入予定。今回の文書更新ではインストール・ダウンロード・ベンチマークは行わない |
-| 今後の確認 | E4B Q5_K_Mの配布ファイル・正式なOllamaタグ、VRAMへの適合、推論速度、他の候補と比べた品質 |
-
-以前記録した導入予定です。Gemmaが現在導入済み・稼働中だと確認したものではなく、Qwenを使っていないことから後継モデルを推定しません。RTX 3070での実際の性能も未確認です。
-
-**2026-11-03確認の公式情報:** [GoogleのGemma 4概要](https://ai.google.dev/gemma/docs/core)でE4Bを、[Ollamaの公式タグ一覧](https://ollama.com/library/gemma4/tags)で`gemma4:e4b`を確認しました。同一覧ではE4Bの`Q5_K_M`正式タグを確認できていません。導入前に配布元・正確なファイルを選定します。モデル全体がVRAMに収まるか、実際の推論速度・品質は実機での確認が必要です。
+Gemmaの確認情報（2026-11-03）: [GoogleのGemma 4概要](https://ai.google.dev/gemma/docs/core)でE4Bを、[Ollamaの公式タグ一覧](https://ollama.com/library/gemma4/tags)で `gemma4:e4b` を確認。同一覧ではE4Bの `Q5_K_M` 正式タグを確認できていません。導入前に配布元・正確なファイルを選定し、VRAMへの適合と推論速度は実機で確認します。
 
 ## 読むところ
-
-Python 3.10+があれば、GPUを使わずにこのcheckoutで試せます。
-
-```powershell
-$env:PYTHONPATH = 'src'
-python -m sidekick.cli --help
-python -m sidekick.security_audit --input tests/fixtures/security_audit/synthetic-auth.txt --source sshd --bsd-year 2026 --synthetic-or-public
-```
-
-モデル取得・パッケージインストールは不要です。監査例は合成fixtureのみを使い、修復操作は行いません。Bashでは各Pythonコマンドの先頭に `PYTHONPATH=src` を付けます。
 
 | 知りたいこと | 文書 |
 | --- | --- |
@@ -96,17 +89,17 @@ python -m sidekick.security_audit --input tests/fixtures/security_audit/syntheti
 | RTX 3070 の用途比較と次に試すこと | [今後の展開案](docs/future-directions.md) |
 | 必要な時だけ使うクラウドGPU、費用ガード、Kaggleの境界 | [Modal GPU実験場](docs/modal-gpu-experiments.md) |
 | GPUを使わない確認、Workerの設定・運用 | [短い導入ガイド](docs/usage.md) / [詳細ガイド](docs/usage.ja.md) |
-| 文書一覧とフォルダ構成 | [docs入口](docs/README.md) |
+| 構成スナップショット（2026-11-06 / 2026-11-18）、文書一覧とフォルダ構成 | [docs入口](docs/README.md) |
 
-## 既存Workerの位置づけ
+## 押さえておく境界
 
-```text
-ユーザー + Lead AI -> 範囲を決めたタスク -> ローカルWorker -> 結果と差分 -> Lead / 人のレビュー
-```
+- **委譲:** [AGENTS.md](AGENTS.md) と [.ai/DELEGATION.md](.ai/DELEGATION.md) が `LOCAL / LEAD / BLOCKED` を定義します（[運用ガイド](docs/usage.ja.md#自動委譲)）。タスクをキューに入れることは、完了を意味しません。
+- **グローバル連携（任意）:** Codex / Claude Code の設定コードと指示ファイルはあります。ホスト設定を変える前に[連携ガイド](docs/usage.ja.md#グローバル連携任意)と[連携の確認範囲](docs/current-status.md#cloud-ai-integration-boundaries)を確認してください。Gemini / ChatGPT 製品との接続は検討段階で、このファイル方式自体が動作するconnectorを意味しません。
+- **別システム:** HomeLab / OpenClaw はこのrepoの外です。Windows Defenderの状態収集はHomeLab側の運用で、このrepoの合成ログ監査候補とは分けて扱います。
 
-要件・設計・安全判断・最終レビューはLeadが持ちます。Workerは許可ファイルとコマンドに制約がありますが、ホスト上のコマンド実行は完全なsandboxではありません。設定の既定値は `auto_git=false` / `auto_push=false` ですが、WatcherモードはGit自動化を有効にするため、起動前に設定を確認してください。pushは明示opt-in、自動mergeは未対応です。[安全上の境界](SECURITY.md)も参照してください。
+## なぜローカルか
 
-Windows Defenderの単純な状態収集にGPUは不要です。HomeLab側の運用と、このrepoの合成ログ監査候補は分けて扱います。
+当初はクラウドAIのトークン節約を重視していました。いまの使い方では、クラウド側に任せてどんどん作れる場面が増えたので、ローカルに任せる理由を考え直しています。短い分類・抽出、ローカル検索の補助、音声文字起こしなどを、より単純な方法と比較予定で、coding offload は用途候補の一つです。クラウドが常に安い・速いという主張ではありません。
 
 ## ライセンス
 
