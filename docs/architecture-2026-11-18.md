@@ -71,9 +71,14 @@ Reading the diagram / 図の読み方:
 
 | Role / 役割 | Model / モデル | Notes / 備考 |
 | --- | --- | --- |
+| First model (decided 2026-11-18) / 第一弾モデル（2026-11-18 決定） | Huihui-Qwen3.8-27B-abliterated-GGUF (huihui-ai) on llama.cpp — https://huggingface.co/huihui-ai/Huihui-Qwen3.8-27B-abliterated-GGUF | First local model to install on the new PC and measure, ahead of the Strata plan below. Dense 27B, so Strata (a Flash-Next MoE engine) does not apply; runs on llama.cpp. A Q4_K_M-class build is ~19.4GB, larger than the 16GB VRAM, so partial RAM offload is assumed; the final quantization is chosen after measuring on the delivered machine. Abliterated (safety filters reduced) — handle with care |
 | Daily driver / 普段使い | Qwen3.8-Flash-Next IQ3_S (on Strata) | Reference figure ~53 tok/s on an RTX 5070 (12GB), from the engine's official materials. Not measured on this machine |
 | Heavy jobs / 重い処理 | DeepSeek V4.1-Flash (on Strata) | ~4–6 tok/s reported on 12GB-class hardware. Whether it is practical at that speed is decided by measurement after delivery |
 | Candidate / 候補 | Huihui-Qwen3.8-Flash-Next-abliterated-v2-GGUF | GGUF build recorded as a candidate on 2026-11-13. Abliterated (safety filters reduced) — handle with care. Adoption undecided; Strata / llama.cpp are the expected runtimes |
+
+**Decision (2026-11-18): install the abliterated Qwen3.8-27B first.** On Hugging Face, the 27B is the centre of the Qwen3.8 ecosystem: the official Qwen/Qwen3.8-27B has 20,424 likes, the unsloth GGUF build has ~6.8M downloads, and derivative work such as the Pi Harness Adapter (LoRA) also targets the 27B — so community builds, adapters and troubleshooting knowledge accumulate around it. The Flash-Next and DeepSeek rows above stay as the subsequent plan; the order is: install the 27B abliterated build, measure it, then proceed.
+
+**決定（2026-11-18）：まず Qwen3.8-27B の abliterated 版を導入する。** Hugging Face では 27B が Qwen3.8 エコシステムの中心で、公式 Qwen/Qwen3.8-27B の likes は 20,424、unsloth の GGUF 版は約683万ダウンロード、Pi 向け Harness Adapter（LoRA）のような派生も 27B が対象です。そのためコミュニティのビルド、アダプター、トラブルシューティングの知見が 27B に集まります。上の Flash-Next と DeepSeek の行は後続計画として残し、順序は「27B abliterated を導入 → 実測 → 次へ」とします。
 
 Quantization references for Qwen3.8-Flash-Next on Strata (vendor figures, RTX 5070 12GB): Q2_0 ≈ 94 tok/s (66GB download, ~40GB RAM), IQ2_XS ≈ 79 tok/s (68GB, ~42GB RAM), IQ3_XXS ≈ 62 tok/s (76GB, ~49GB RAM). With 64GB RAM, the full expert set fits in memory; the RTX 5070 Ti's 16GB VRAM holds more hot experts than the 12GB reference machine, so equal or better speed is expected — as an expectation, not a result.
 
@@ -96,10 +101,11 @@ Before any item above is described as operational, record on the delivered machi
 実機で「運用中」と書けるようにするには、到着後に次を記録します。
 
 1. Strata installation and version / Strata の導入とバージョン
-2. Qwen3.8-Flash-Next IQ3_S: measured tok/s, VRAM and RAM usage, cold-start time / 実測 tok/s、VRAM・RAM 使用量、コールドスタート時間
-3. DeepSeek V4.1-Flash: measured tok/s and a practicality judgement / 実測 tok/s と実用可否の判断
-4. Whether the Huihui abliterated GGUF candidate is adopted / Huihui abliterated GGUF 候補を採用するか
-5. Update this document with the measured values and dates / この文書へ実測値と日付を反映
+2. Qwen3.8-27B abliterated (llama.cpp): measured tok/s, VRAM and RAM usage under partial offload, and the quantization finally chosen / Qwen3.8-27B abliterated（llama.cpp）の実測 tok/s、部分オフロード時の VRAM・RAM 使用量、最終的に選んだ量子化
+3. Qwen3.8-Flash-Next IQ3_S: measured tok/s, VRAM and RAM usage, cold-start time / 実測 tok/s、VRAM・RAM 使用量、コールドスタート時間
+4. DeepSeek V4.1-Flash: measured tok/s and a practicality judgement / 実測 tok/s と実用可否の判断
+5. Whether the Huihui abliterated GGUF candidate is adopted / Huihui abliterated GGUF 候補を採用するか
+6. Update this document with the measured values and dates / この文書へ実測値と日付を反映
 
 ## Boundaries / 境界
 
