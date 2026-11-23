@@ -2,19 +2,18 @@
 
 [English](README.md) | [日本語](README.ja.md)
 
-**Cloud AI does the main work; this project explores where the local GPU genuinely helps as a sidekick.** Combinations with Claude, Gemini and ChatGPT are being tried, and the jobs worth offloading are still being sorted out.
+**Delegate a narrowly scoped development task to a local Worker, then review the result before accepting changes.** Local AI Sidekick is a Python toolkit that hands tasks off through files. It can run approved commands without a model, or use local Ollama for read-only code exploration and narrowly specified edits. Cloud AI can stay in the Lead role.
 
 [![CI](https://github.com/moruku36/local-ai-sidekick/actions/workflows/ci.yml/badge.svg)](https://github.com/moruku36/local-ai-sidekick/actions/workflows/ci.yml)
 
 ## At a glance
 
-| Item | Status |
+| Item | What is available |
 | --- | --- |
-| Local host (until 2026-11-17) | NVIDIA RTX 3070 (8GB) — see the [2026-11-06 architecture snapshot](docs/architecture-2026-11-06.md) |
-| Local host (from 2026-11-18) | New PC with RTX 5070 Ti (16GB) and 64GB RAM — see the [2026-11-18 architecture](docs/architecture-2026-11-18.md) (planned; installation and measurements follow delivery) |
-| Active local model | None confirmed. Qwen is retired; its successor on the current host is not established |
-| In this repository | A Python CLI, a bounded file-based delegation protocol (Lead AI → local Worker), Worker roles, and an offline security-log audit candidate |
-| Evidence rule | Code and synthetic tests show what exists in source — not what has run on the real machine |
+| File-based handoff | A Lead AI scopes the task in `.ai/TASK.md`; the Worker writes `.ai/RESULT.md` for review |
+| Worker modes | Run approved commands without a model, or use local Ollama to explore code and make scoped edits |
+| Quick start | Python 3.10+; the examples below need no GPU, model, or package installation |
+| Desktop experiment | The [RTX 3070 snapshot](docs/architecture-2026-11-06.md) is historical. The [RTX 5070 Ti / 64 GB RAM plan](docs/architecture-2026-11-18.md) does not establish installation or performance |
 
 ## Try it (no GPU, no model)
 
@@ -40,7 +39,7 @@ flowchart TD
     U["User / human approval"] --> L["Lead AI host: scope, design, review"]
     L --> D["Delegation assessment: LOCAL / LEAD / BLOCKED"]
     D -->|LOCAL only| H["sidekick.delegate: validate and publish TASK"]
-    subgraph Local["Local development host / RTX 3070 context"]
+    subgraph Local["Local development host"]
         H --> T[".ai/TASK.md + rules"]
         T --> W["Watcher or manual runner"]
         W --> C["command-runner: approved commands, no LLM"]
@@ -53,7 +52,6 @@ flowchart TD
     end
     R --> L
     D -->|LEAD or BLOCKED| L
-    L -. "future experiments, not deployed" .-> P["Gemma adoption / Modal GPU / Kaggle"]
 ```
 
 | Component | What exists in this repository |
@@ -67,18 +65,13 @@ flowchart TD
 | Claude Code assets | 8 agent definitions and 3 skills, plus imports/hook — instruction files, not 8 deployed services |
 | Security-log audit candidate | Offline rules over synthetic/public inputs, with optional local Ollama assistance; no remediation |
 
-Details: [role contracts](docs/worker-roles.md) and [current status / integration limits](docs/current-status.md). `QUEUED` means a request file was written, not that a Worker ran. The delegation helper does not start the Watcher. The diagram shows the implemented paths on the current host; the hardware change on 2026-11-18 is documented in the [2026-11-18 architecture](docs/architecture-2026-11-18.md).
+Details: [role contracts](docs/worker-roles.md) and [current status / integration limits](docs/current-status.md). `QUEUED` means a request file was written, not that a Worker ran. The delegation helper does not start the Watcher. The diagram shows the paths implemented in this repository, not a verified deployment on a particular machine.
 
 ## Model status
 
-| Item | Status |
-| --- | --- |
-| Qwen | Retired, per the owner's correction. `qwen2.5:14b` remains the source/example default and the `Modelfile` is an earlier Qwen experiment; leaving the model unspecified still selects the legacy default in current code |
-| Successor (current host) | Not established by this repository. Before model-backed work, set `SIDEKICK_MODEL` or pass `--model` with the actually installed model |
-| Gemma 4 E4B plan (recorded 2026-11-03) | Planned, not installed. Requested `gemma4:e4b` + `Q5_K_M` (5-bit); an official E4B `Q5_K_M` tag was not confirmed. This plan is not confirmation that Gemma replaced Qwen |
-| From 2026-11-18 | Local LLM platform moves to Strata on the new PC: Qwen3.8-Flash-Next IQ3_S for daily use, DeepSeek V4.1-Flash for heavy jobs, one at a time. Plan only until measured — see [architecture 2026-11-18](docs/architecture-2026-11-18.md) |
-
-Gemma sources checked on 2026-11-03: [Google's Gemma 4 overview](https://ai.google.dev/gemma/docs/core) confirms E4B; the [official Ollama tag list](https://ollama.com/library/gemma4/tags) lists `gemma4:e4b`. Select the exact distribution before installation; VRAM fit and performance remain unverified.
+- **Implemented in Sidekick:** Model-backed Worker roles use local Ollama. Set `SIDEKICK_MODEL` or pass `--model` with an installed model. The legacy fallback `qwen2.5:14b` is a code default, not a statement of current use.
+- **Separate desktop experiments:** The [November 18 architecture](docs/architecture-2026-11-18.md#model-operation--モデル運用) records a Qwen3.8-27B variant on llama.cpp as the first model to evaluate, followed by Strata experiments with Qwen3.8-Flash-Next and DeepSeek V4.1-Flash. These are recorded plans, not verified installations or benchmarks. This repository has no native Sidekick adapter for Strata or llama.cpp.
+- **Earlier Gemma experiment (November 3):** The [Google Gemma 4 overview](https://ai.google.dev/gemma/docs/core) and [Ollama tag list](https://ollama.com/library/gemma4/tags) were cited for E4B. The requested `Q5_K_M` tag and GPU fit were not verified.
 
 ## Documents
 
@@ -88,13 +81,22 @@ Gemma sources checked on 2026-11-03: [Google's Gemma 4 overview](https://ai.goog
 | RTX 3070 options, sources and next experiments | [Future directions / 今後の展開案](docs/future-directions.md) |
 | Episodic cloud GPU tests, cost guards and Kaggle boundaries | [Modal GPU experiments](docs/modal-gpu-experiments.md) |
 | A GPU-free first look, then optional Worker setup | [Usage](docs/usage.md) / [詳細な日本語ガイド](docs/usage.ja.md) |
+| What the offline security-log example checks | [Audit guide](docs/security-audit.md) |
 | Architecture snapshots (2026-11-06 / 2026-11-18), all documents and the folder map | [Documentation index](docs/README.md) |
 
 ## Boundaries worth knowing
 
-- **Delegation:** [AGENTS.md](AGENTS.md) and [.ai/DELEGATION.md](.ai/DELEGATION.md) define `LOCAL / LEAD / BLOCKED`; see the [operating guide](docs/usage.ja.md#自動委譲). Queueing a task does not mean it finished.
-- **Global integration (optional):** Codex / Claude Code setup code and instruction files exist; see the [setup guide](docs/usage.ja.md#グローバル連携任意) and [integration evidence limits](docs/current-status.md#cloud-ai-integration-boundaries) before changing host settings. Gemini / ChatGPT product connections are exploration ideas — the generic file protocol does not establish a working connector.
-- **Separate systems:** HomeLab / OpenClaw are not part of this repository. Windows Defender state collection belongs to that workflow; Sidekick's synthetic-log audit is a different, unverified deployment candidate.
+### Automatic delegation
+
+[AGENTS.md](AGENTS.md) and [.ai/DELEGATION.md](.ai/DELEGATION.md) define `LOCAL / LEAD / BLOCKED`; see the [operating guide](docs/usage.ja.md#自動委譲). Queueing a task does not mean it finished.
+
+### Global integration (optional)
+
+Codex / Claude Code setup code and instruction files exist; see the [setup guide](docs/usage.ja.md#グローバル連携任意) and [integration evidence limits](docs/current-status.md#cloud-ai-integration-boundaries) before changing host settings. Gemini / ChatGPT product connections are exploration ideas — the generic file protocol does not establish a working connector.
+
+### Separate systems
+
+HomeLab / OpenClaw are not part of this repository. Windows Defender state collection belongs to that workflow; Sidekick's synthetic-log audit is a different, unverified deployment candidate.
 
 ## Why local at all
 

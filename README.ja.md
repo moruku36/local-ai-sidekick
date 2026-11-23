@@ -2,19 +2,18 @@
 
 [English](README.md) | [日本語](README.ja.md)
 
-**強力なクラウドAIを主役に、手元のローカルGPUを補助役として活かす方法を探すプロジェクトです。** Claude・Gemini・ChatGPTなどと組み合わせながら、ローカルに任せる意味のある仕事を試行錯誤しています。
+**範囲を絞った開発タスクをローカルのWorkerに任せ、結果をレビューしてから変更を取り込みます。** Local AI Sidekickは、ファイルでタスクを受け渡すPythonツールです。承認済みコマンドはモデルなしで、コードの読み取り調査や仕様を限定した編集はローカルのOllamaで実行できます。クラウドAIは引き続きLeadとして使えます。
 
 [![CI](https://github.com/moruku36/local-ai-sidekick/actions/workflows/ci.yml/badge.svg)](https://github.com/moruku36/local-ai-sidekick/actions/workflows/ci.yml)
 
 ## ひと目で分かる現状
 
-| 項目 | 状況 |
+| 項目 | できること・確認できること |
 | --- | --- |
-| ローカルホスト（2026-11-17まで） | NVIDIA RTX 3070（8GB）。[2026-11-06の構成スナップショット](docs/architecture-2026-11-06.md)参照 |
-| ローカルホスト（2026-11-18から） | RTX 5070 Ti（16GB）・メモリ64GBの新PC。[2026-11-18の構成](docs/architecture-2026-11-18.md)参照（計画段階。導入と実測は到着後） |
-| 現在のローカルモデル | 確定したものはない。Qwenは利用終了。現行ホストでの後継は未確定 |
-| このrepoにあるもの | Python CLI、範囲を決めたファイル方式の委譲（Lead AI → ローカルWorker）、Workerのロール、合成ログを使うオフライン監査の候補実装 |
-| 根拠の扱い | コードと合成テストは「ソースに存在すること」の根拠であり、実機で動いたことの証明ではない |
+| ファイルでの委譲 | Leadが `.ai/TASK.md` に作業範囲を書き、Workerがレビュー用の `.ai/RESULT.md` を返す |
+| Workerの実行モード | モデルなしで承認済みコマンドを実行するか、ローカルOllamaでコード調査や範囲を絞った編集を行う |
+| お試し | Python 3.10以上。下の例はGPU・モデル・パッケージのインストール不要 |
+| デスクトップ実験 | [RTX 3070の構成](docs/architecture-2026-11-06.md)は過去の記録。[RTX 5070 Ti / メモリ64 GBの構成](docs/architecture-2026-11-18.md)は計画で、導入・実測の確認ではない |
 
 ## まず試す（GPU・モデル不要）
 
@@ -41,7 +40,7 @@ flowchart TD
     U["User / human approval"] --> L["Lead AI host: scope, design, review"]
     L --> D["Delegation assessment: LOCAL / LEAD / BLOCKED"]
     D -->|LOCAL only| H["sidekick.delegate: validate and publish TASK"]
-    subgraph Local["Local development host / RTX 3070 context"]
+    subgraph Local["Local development host"]
         H --> T[".ai/TASK.md + rules"]
         T --> W["Watcher or manual runner"]
         W --> C["command-runner: approved commands, no LLM"]
@@ -54,7 +53,6 @@ flowchart TD
     end
     R --> L
     D -->|LEAD or BLOCKED| L
-    L -. "future experiments, not deployed" .-> P["Gemma adoption / Modal GPU / Kaggle"]
 ```
 
 | 要素 | このrepoにあるもの |
@@ -68,18 +66,13 @@ flowchart TD
 | Claude Code用資材 | 8つのagent定義、3つのskill、imports・hook。8サービスの稼働を意味しない |
 | セキュリティログ監査候補 | 合成・公開入力のオフラインルール処理と、任意のローカルOllama補助。修復操作は行わない |
 
-詳細は[ロール契約](docs/worker-roles.md)と[現在の実装・検証範囲](docs/current-status.md)を参照してください。`QUEUED`はタスクファイルの発行であり、Workerの実行完了ではありません。委譲helperはWatcherを起動しません。図は現行ホストで実装されている経路です。2026-11-18のハードウェア変更は[2026-11-18の構成](docs/architecture-2026-11-18.md)にまとめています。
+詳細は[ロール契約](docs/worker-roles.md)と[現在の実装・検証範囲](docs/current-status.md)を参照してください。`QUEUED`はタスクファイルの発行であり、Workerの実行完了ではありません。委譲helperはWatcherを起動しません。図はリポジトリの実装経路であり、特定の実機で動作確認した構成ではありません。
 
 ## 現在のモデル状況
 
-| 項目 | 確認できていること |
-| --- | --- |
-| Qwen | 現在は使っていない（本人の最新の訂正）。コード・env例の既定値 `qwen2.5:14b` と `Modelfile` の実験設定は残っており、現行コードではモデルを省略すると旧Qwen既定値が選ばれる |
-| 後継モデル（現行ホスト） | repoと今回の文書確認からは確定できない。モデルを使う前に `SIDEKICK_MODEL` または `--model` で実際に導入したモデルを指定する |
-| Gemma導入予定（2026-11-03記録） | Gemma 4 E4B、`gemma4:e4b` + `Q5_K_M`（5-bit）を希望。導入予定のままで、正式タグは未確認。GemmaがQwenの後継だと確認したものではない |
-| 2026-11-18から | ローカルLLM基盤は新PC上のStrataへ。普段使いは Qwen3.8-Flash-Next IQ3_S、重い処理は DeepSeek V4.1-Flash、片方ずつ運用。実測までは計画として扱う（[2026-11-18の構成](docs/architecture-2026-11-18.md)） |
-
-Gemmaの確認情報（2026-11-03）: [GoogleのGemma 4概要](https://ai.google.dev/gemma/docs/core)でE4Bを、[Ollamaの公式タグ一覧](https://ollama.com/library/gemma4/tags)で `gemma4:e4b` を確認。同一覧ではE4Bの `Q5_K_M` 正式タグを確認できていません。導入前に配布元・正確なファイルを選定し、VRAMへの適合と推論速度は実機で確認します。
+- **Sidekickの実装:** モデルを使うWorkerはローカルOllamaに接続します。実際に導入済みのモデルを `SIDEKICK_MODEL` または `--model` で指定してください。旧既定値の `qwen2.5:14b` はコード上の設定で、現在の利用モデルを示すものではありません。
+- **別枠のデスクトップ実験:** [11月18日の構成](docs/architecture-2026-11-18.md#model-operation--モデル運用)には、まずllama.cppでQwen3.8-27Bの派生モデルを評価し、その後StrataでQwen3.8-Flash-NextやDeepSeek V4.1-Flashを試す計画が記録されています。導入・実測は未確認で、このリポジトリにStrataやllama.cppへの専用アダプタはありません。
+- **以前のGemma実験（11月3日）:** E4Bは[GoogleのGemma 4概要](https://ai.google.dev/gemma/docs/core)と[Ollamaのタグ一覧](https://ollama.com/library/gemma4/tags)を参照。希望していた `Q5_K_M` の配布タグとGPUへの適合は未確認です。
 
 ## 読むところ
 
@@ -89,6 +82,7 @@ Gemmaの確認情報（2026-11-03）: [GoogleのGemma 4概要](https://ai.google
 | RTX 3070 の用途比較と次に試すこと | [今後の展開案](docs/future-directions.md) |
 | 必要な時だけ使うクラウドGPU、費用ガード、Kaggleの境界 | [Modal GPU実験場](docs/modal-gpu-experiments.md) |
 | GPUを使わない確認、Workerの設定・運用 | [短い導入ガイド](docs/usage.md) / [詳細ガイド](docs/usage.ja.md) |
+| オフラインのログ監査例で確認できること | [監査ガイド](docs/security-audit.md) |
 | 構成スナップショット（2026-11-06 / 2026-11-18）、文書一覧とフォルダ構成 | [docs入口](docs/README.md) |
 
 ## 押さえておく境界
