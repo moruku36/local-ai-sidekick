@@ -13,7 +13,7 @@
 | File-based handoff | A Lead AI scopes the task in `.ai/TASK.md`; the Worker writes `.ai/RESULT.md` for review |
 | Worker modes | Run approved commands without a model, or use local Ollama to explore code and make scoped edits |
 | Quick start | Python 3.10+; the examples below need no GPU, model, or package installation |
-| Desktop experiment | The [RTX 3070 snapshot](docs/architecture-2026-11-06.md) is historical. The [RTX 5070 Ti / 64 GB RAM plan](docs/architecture-2026-11-18.md) does not establish installation or performance |
+| Desktop experiments | The [November 6 architecture snapshot](docs/architecture-2026-11-06.md) is historical. The [newer architecture report](docs/architecture-2026-11-18.md) records separate Strata measurements from November 19, 2026 |
 
 ## Try it (no GPU, no model)
 
@@ -70,7 +70,7 @@ Details: [role contracts](docs/worker-roles.md) and [current status / integratio
 ## Model status
 
 - **Implemented in Sidekick:** Model-backed Worker roles use local Ollama. Set `SIDEKICK_MODEL` or pass `--model` with an installed model. The legacy fallback `qwen2.5:14b` is a code default, not a statement of current use.
-- **Separate desktop experiments:** The [November 18 architecture](docs/architecture-2026-11-18.md#model-operation--モデル運用) records a Qwen3.8-27B variant on llama.cpp as the first model to evaluate, followed by Strata experiments with Qwen3.8-Flash-Next and DeepSeek V4.1-Flash. These are recorded plans, not verified installations or benchmarks. This repository has no native Sidekick adapter for Strata or llama.cpp.
+- **Strata, measured separately:** The [architecture report](docs/architecture-2026-11-18.md#model-operation--モデル運用) records a Strata installation and November 19, 2026 measurements for Qwen3.8-Flash-Next in IQ3_S and UD-Q4_K_XL. DeepSeek V4.1-Flash was not deployed on that setup. These results do not verify Sidekick integration with Strata, and this repository has no native Strata adapter.
 - **Earlier Gemma experiment (November 3):** The [Google Gemma 4 overview](https://ai.google.dev/gemma/docs/core) and [Ollama tag list](https://ollama.com/library/gemma4/tags) were cited for E4B. The requested `Q5_K_M` tag and GPU fit were not verified.
 
 ## Documents

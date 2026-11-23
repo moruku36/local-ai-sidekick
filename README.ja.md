@@ -13,7 +13,7 @@
 | ファイルでの委譲 | Leadが `.ai/TASK.md` に作業範囲を書き、Workerがレビュー用の `.ai/RESULT.md` を返す |
 | Workerの実行モード | モデルなしで承認済みコマンドを実行するか、ローカルOllamaでコード調査や範囲を絞った編集を行う |
 | お試し | Python 3.10以上。下の例はGPU・モデル・パッケージのインストール不要 |
-| デスクトップ実験 | [RTX 3070の構成](docs/architecture-2026-11-06.md)は過去の記録。[RTX 5070 Ti / メモリ64 GBの構成](docs/architecture-2026-11-18.md)は計画で、導入・実測の確認ではない |
+| デスクトップ実験 | [11月6日の構成](docs/architecture-2026-11-06.md)は過去の記録。[その後の構成](docs/architecture-2026-11-18.md)には、Sidekickとは別に2026年11月19日に行ったStrataの実測を記録 |
 
 ## まず試す（GPU・モデル不要）
 
@@ -71,7 +71,7 @@ flowchart TD
 ## 現在のモデル状況
 
 - **Sidekickの実装:** モデルを使うWorkerはローカルOllamaに接続します。実際に導入済みのモデルを `SIDEKICK_MODEL` または `--model` で指定してください。旧既定値の `qwen2.5:14b` はコード上の設定で、現在の利用モデルを示すものではありません。
-- **別枠のデスクトップ実験:** [11月18日の構成](docs/architecture-2026-11-18.md#model-operation--モデル運用)には、まずllama.cppでQwen3.8-27Bの派生モデルを評価し、その後StrataでQwen3.8-Flash-NextやDeepSeek V4.1-Flashを試す計画が記録されています。導入・実測は未確認で、このリポジトリにStrataやllama.cppへの専用アダプタはありません。
+- **Strataでの別枠の実測:** [構成資料](docs/architecture-2026-11-18.md#model-operation--モデル運用)には、Strataを導入し、2026年11月19日にQwen3.8-Flash-NextのIQ3_SとUD-Q4_K_XLを実測した記録があります。DeepSeek V4.1-Flashはこの構成には導入していません。この結果はSidekickとStrataの連携を検証したものではなく、このリポジトリにStrata専用のアダプタはありません。
 - **以前のGemma実験（11月3日）:** E4Bは[GoogleのGemma 4概要](https://ai.google.dev/gemma/docs/core)と[Ollamaのタグ一覧](https://ollama.com/library/gemma4/tags)を参照。希望していた `Q5_K_M` の配布タグとGPUへの適合は未確認です。
 
 ## 読むところ
